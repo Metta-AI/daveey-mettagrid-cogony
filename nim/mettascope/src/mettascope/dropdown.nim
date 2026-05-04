@@ -37,22 +37,26 @@ proc dropdown*(state: var DropState, current: string,
     state.open = not state.open
   result = ""
   if state.open:
-    let menuPos = basePos + vec2(0, DropH)
+    let
+      menuPos = basePos + vec2(0, DropH)
+      menuH = options.len.float32 * DropH
+    sk.drawRect(menuPos, vec2(width, menuH), DropBg)
+    sk.drawRect(menuPos, vec2(width, 1), DropBorder)
+    sk.drawRect(menuPos + vec2(0, menuH - 1),
+      vec2(width, 1), DropBorder)
+    sk.drawRect(menuPos, vec2(1, menuH), DropBorder)
+    sk.drawRect(menuPos + vec2(width - 1, 0),
+      vec2(1, menuH), DropBorder)
     for i, name in options:
       let
         itemY = menuPos + vec2(0, i.float32 * DropH)
         itemRect = Rect(
           x: itemY.x, y: itemY.y, w: width, h: DropH)
         hover = sk.mouseHover(window, itemRect)
-        bg =
-          if hover: DropHover
-          else: DropBg
-      sk.drawRect(itemY, vec2(width, DropH), bg)
-      sk.drawRect(itemY + vec2(0, DropH - 1),
-        vec2(width, 1), DropBorder)
-      sk.drawRect(itemY, vec2(1, DropH), DropBorder)
-      sk.drawRect(itemY + vec2(width - 1, 0),
-        vec2(1, DropH), DropBorder)
+      if hover:
+        sk.drawRect(itemY, vec2(width, DropH), DropHover)
+      if i > 0:
+        sk.drawRect(itemY, vec2(width, 1), DropBorder)
       discard sk.drawText(sk.textStyle, name,
         itemY + vec2(6, 3), DropText, clip = false)
       if hover and window.buttonReleased[MouseLeft]:
