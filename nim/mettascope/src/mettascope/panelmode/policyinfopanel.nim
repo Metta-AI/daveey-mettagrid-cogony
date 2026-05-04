@@ -3,7 +3,10 @@
 import
   std/[json, strformat, strutils, options],
   vmath, silky, windy,
-  ../common, ../replays
+  ../common, ../replays, ../dropdown, ../actions
+
+var policyDrop = DropState()
+let policyOptions = @["noop", "random", "baseline"]
 
 proc parseRelativeTarget(value: JsonNode): Option[IVec2] =
   ## Parse a relative target offset from JSON.
@@ -46,51 +49,93 @@ proc formatPolicyValue(value: JsonNode): string =
   else:
     $value
 
+proc wrapText(s: string, maxW: float32): string =
+  ## Insert newlines to wrap text within maxW pixels.
+  let charW = 7.0f
+  let maxChars = max(10, int(maxW / charW))
+  if s.len <= maxChars:
+    return s
+  var lines: seq[string]
+  var i = 0
+  while i < s.len:
+    let end_idx = min(i + maxChars, s.len)
+    lines.add(s[i ..< end_idx])
+    i = end_idx
+  return lines.join("\n")
+
 proc drawPolicyInfo*(panel: Panel, frameId: string, contentPos: Vec2, contentSize: Vec2) =
-  ## Draw the policy info panel for the currently selected agent.
+  ## Draw the policy info panel with policy selector dropdown.
   frame(frameId, contentPos, contentSize):
     policyTarget = none(IVec2)
 
-    if selected.isNil:
-      text("No selected")
-      return
+    # Policy selector dropdown.
+    dropdownHeader(policyDrop, selectedPolicy)
 
-    if replay.isNil:
-      text("Replay not loaded")
-      return
-
-    if not selected.isAgent:
-      text("Select an agent")
+    if selected.isNil or replay.isNil or
+        not selected.isAgent:
+      let picked = dropdownMenu(
+        policyDrop, policyOptions)
+      if picked.len > 0:
+        selectedPolicy = picked
+        sendAction(0, "__policy__:" & picked)
+      if selected.isNil:
+        text("No selected")
+      elif not selected.isAgent:
+        text("Select an agent")
       return
 
     let
       policyInfo = selected.policyInfos.at()
       policyName = selected.policyName
-    if policyInfo.isNil or policyInfo.kind != JObject or policyInfo.len == 0:
+      maxW = contentSize.x - 16
+
+    if policyInfo.isNil or policyInfo.kind != JObject or
+        policyInfo.len == 0:
+      let picked = dropdownMenu(
+        policyDrop, policyOptions)
+      if picked.len > 0:
+        selectedPolicy = picked
+        sendAction(0, "__policy__:" & picked)
       text("No policy info")
       return
 
-    if policyName.len > 0:
-      text(&"Policy: {policyName}")
-
     let agentPos = selected.location.at(step)
 
+    # Pick up initial policy name from Python.
+    let policyNameNode = policyInfo.getOrDefault(
+      "__policy_name__")
+    if not policyNameNode.isNil and
+        policyNameNode.kind == JString:
+      let name = policyNameNode.getStr
+      if name.len > 0 and selectedPolicy != name:
+        selectedPolicy = name
+
     for key, value in policyInfo.pairs:
-      if key.startsWith("__"):
-        continue
-      if key == "policy_name":
+      if key.startsWith("__") or key == "policy_name" or
+          key == "obs_grid":
         continue
       if key == "target":
         let relOpt = parseRelativeTarget(value)
         if relOpt.isSome:
           let
             rel = relOpt.get
-            abs = ivec2(agentPos.x + rel.x, agentPos.y + rel.y)
+            abs = ivec2(
+              agentPos.x + rel.x,
+              agentPos.y + rel.y)
           policyTarget = some(abs)
-          text(&"{key}: [{rel.y}, {rel.x}] -> [{abs.y}, {abs.x}]")
+          text(wrapText(
+            &"{key}: [{rel.y},{rel.x}] -> [{abs.y},{abs.x}]",
+            maxW))
         else:
           policyTarget = none(IVec2)
-          text(&"{key}: {value}")
+          text(wrapText(&"{key}: {value}", maxW))
         continue
+      let formatted = formatPolicyValue(value)
+      text(wrapText(&"{key}: {formatted}", maxW))
 
-      text(&"{key}: {formatPolicyValue(value)}")
+    # Draw dropdown menu last so it renders on top.
+    let picked = dropdownMenu(
+      policyDrop, policyOptions)
+    if picked.len > 0:
+      selectedPolicy = picked
+      sendAction(0, "__policy__:" & picked)

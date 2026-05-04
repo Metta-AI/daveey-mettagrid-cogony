@@ -333,23 +333,11 @@ proc drawEntityStats*(entity: Entity) =
   else:
     drawGenericView(entity)
 
-import ../dropdown
-
-const PolicyNames = ["noop", "random", "baseline"]
-
-var policyDrop = DropState()
-let policyOptions = @["noop", "random", "baseline"]
-
 proc drawCoguePanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
   ## Draw the Cogue panel for the selected entity.
   frame(frameId, contentPos, contentSize):
-    dropdownHeader(policyDrop, selectedPolicy)
     if replay.isNil or selected.isNil:
       text("No object selected")
-    else:
-      drawEntityStats(selected)
-    let picked = dropdownMenu(policyDrop, policyOptions)
-    if picked.len > 0:
-      selectedPolicy = picked
-      sendAction(0, "__policy__:" & picked)
+      return
+    drawEntityStats(selected)
