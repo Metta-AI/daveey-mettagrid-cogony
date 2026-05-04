@@ -338,21 +338,18 @@ import ../dropdown
 const PolicyNames = ["noop", "random", "baseline"]
 
 var policyDrop = DropState()
-
-proc drawPolicySelector() =
-  ## Draw a dropdown for policy selection.
-  let picked = dropdown(policyDrop, selectedPolicy,
-    @["noop", "random", "baseline"])
-  if picked.len > 0:
-    selectedPolicy = picked
-    sendAction(0, "__policy__:" & picked)
+let policyOptions = @["noop", "random", "baseline"]
 
 proc drawCoguePanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
   ## Draw the Cogue panel for the selected entity.
   frame(frameId, contentPos, contentSize):
-    drawPolicySelector()
+    dropdownHeader(policyDrop, selectedPolicy)
     if replay.isNil or selected.isNil:
       text("No object selected")
-      return
-    drawEntityStats(selected)
+    else:
+      drawEntityStats(selected)
+    let picked = dropdownMenu(policyDrop, policyOptions)
+    if picked.len > 0:
+      selectedPolicy = picked
+      sendAction(0, "__policy__:" & picked)
