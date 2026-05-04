@@ -60,54 +60,84 @@ proc drawObsPanel*(panel: Panel, frameId: string,
             loc.feats.add((key: k, val: v.getInt))
       locs.add(loc)
 
-    locs.sort(proc(a, b: Location): int =
+    # Split into entities and walls.
+    var entities, walls: seq[Location]
+    for loc in locs:
+      var isWall = false
+      for tag in loc.tags:
+        if tag == "type:wall":
+          isWall = true
+          break
+      if isWall:
+        walls.add(loc)
+      else:
+        entities.add(loc)
+
+    entities.sort(proc(a, b: Location): int =
+      cmp(a.dist, b.dist))
+    walls.sort(proc(a, b: Location): int =
       cmp(a.dist, b.dist))
 
-    var count = 0
-    for loc in locs:
+    proc drawLoc(loc: Location, w: float32) =
       let
         isSel = hasSelectedObsCell and
           selectedObsCell.dr == loc.dr and
           selectedObsCell.dc == loc.dc
-        headerColor =
+        hdrColor =
           if isSel: Highlight
           else: Bright
-
-      # Count lines for this location.
-      let nLines = 1 + loc.tags.len + loc.feats.len
+        nLines = 1 + loc.tags.len + loc.feats.len
       if isSel:
         sk.drawRect(sk.at - vec2(2, 0),
-          vec2(contentSize.x - 4,
-            nLines.float32 * 13 + 2), HighlightBg)
-
-      # Header: position.
+          vec2(w - 4, nLines.float32 * 13 + 2),
+          HighlightBg)
       discard sk.drawText(sk.textStyle,
         fmt"({loc.dr:+d},{loc.dc:+d}) d={loc.dist}",
-        sk.at, headerColor, clip = false)
+        sk.at, hdrColor, clip = false)
       sk.advance(vec2(0, 13))
-
-      # Tags, one per line.
       for tag in loc.tags:
         discard sk.drawText(sk.textStyle,
-          "  " & tag,
-          sk.at,
+          "  " & tag, sk.at,
           (if isSel: Highlight else: TagColor),
           clip = false)
         sk.advance(vec2(0, 13))
-
-      # Features, one per line.
       for feat in loc.feats:
         discard sk.drawText(sk.textStyle,
-          fmt"  {feat.key} = {feat.val}",
-          sk.at,
+          fmt"  {feat.key} = {feat.val}", sk.at,
           (if isSel: Highlight else: FeatColor),
           clip = false)
         sk.advance(vec2(0, 13))
 
+    # Entities section.
+    if entities.len == 0 and walls.len == 0:
+      text("(no tokens in obs)")
+      return
+    var count = 0
+    for loc in entities:
+      drawLoc(loc, contentSize.x)
       count += 1
       if count >= 20:
         text("...")
         break
 
-    if count == 0:
-      text("(no tokens in obs)")
+    # Walls section.
+    if walls.len > 0:
+      sk.advance(vec2(0, 6))
+      discard sk.drawText(sk.textStyle,
+        fmt"walls ({walls.len})", sk.at,
+        Dim, clip = false)
+      sk.advance(vec2(0, 13))
+      var line = ""
+      for w in walls:
+        if line.len > 0:
+          line.add " "
+        line.add fmt"({w.dr:+d},{w.dc:+d})"
+        if line.len > 40:
+          discard sk.drawText(sk.textStyle,
+            "  " & line, sk.at, Dim, clip = false)
+          sk.advance(vec2(0, 13))
+          line = ""
+      if line.len > 0:
+        discard sk.drawText(sk.textStyle,
+          "  " & line, sk.at, Dim, clip = false)
+        sk.advance(vec2(0, 13))
