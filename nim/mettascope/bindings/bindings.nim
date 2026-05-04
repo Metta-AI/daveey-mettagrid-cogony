@@ -2,7 +2,7 @@ import
   os, genny, openGL, jsony, vmath, windy, silky,
   std/[times, math],
   ../src/mettascope,
-  ../src/mettascope/[replays, common, replayloader, configs, assets],
+  ../src/mettascope/[replays, common, replayloader, configs],
   ../src/mettascope/gamemode/[worldmap, heatmap],
   ../src/mettascope/panelmode/[timeline, envpanel, vibespanel]
 
@@ -47,19 +47,14 @@ proc ctrlCHandler() {.noconv.} =
     window.close()
   quit(0)
 
-proc init(dataDir: string, version: string, replay: string, autostart: bool = false): RenderResponse =
+proc init(dataDir: string, replay: string, autostart: bool = false): RenderResponse =
   result = RenderResponse(shouldClose: false, actions: @[])
   try:
     echo "Initializing Mettascope..."
     if os.getEnv("METTASCOPE_DISABLE_CTRL_C", "") == "":
       setControlCHook(ctrlCHandler)
     playMode = Realtime
-    let resolvedDir =
-      if dataDir.len > 0 and dirExists(dataDir):
-        dataDir
-      else:
-        ensureAssets(version)
-    setDataDir(resolvedDir)
+    setDataDir(dataDir)
     play = autostart
     common.replay = loadReplayString(replay, "MettaScope")
     let config = loadConfig()
@@ -69,6 +64,8 @@ proc init(dataDir: string, version: string, replay: string, autostart: bool = fa
       ivec2(config.windowWidth, config.windowHeight),
       vsync = true
     )
+    if config.hasSavedWindowPos:
+      window.pos = ivec2(config.windowX, config.windowY)
     makeContextCurrent(window)
     loadExtensions()
     initMettascope()
@@ -121,9 +118,11 @@ proc render(currentStep: int, replayStep: string): RenderResponse =
     requestPython = false
 
     if not hadAgentsBefore and common.replay.agents.len > 0:
-      # fit the game world to the screen and update the UI state for any agents that should be selected
-      needsInitialFit = true
+      # Fit the world to the screen only on a truly fresh session; when the
+      # user has a saved camera, applyUIState has already restored it in
+      # onReplayLoaded and we must not clobber it with an auto-fit.
       let config = loadConfig()
+      needsInitialFit = not config.hasSavedCamera
       applyUIState(config)
     while true:
       if window.closeRequested:

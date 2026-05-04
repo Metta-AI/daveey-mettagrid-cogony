@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <random>
 #include <stdexcept>
 #include <type_traits>
 
@@ -18,7 +19,8 @@ ResolvedGameValue resolve_game_value(const GameValueConfig& gvc, const mettagrid
         ResolvedGameValue rgv;
 
         if constexpr (std::is_same_v<T, InventoryValueConfig>) {
-          HasInventory* inventory_entity = ctx.actor;
+          HasInventory* inventory_entity =
+              (c.scope == GameValueScope::TARGET) ? ctx.target : ctx.actor;
           if (inventory_entity) {
             auto resource_id = c.id;
             rgv.compute_fn = [inventory_entity, resource_id]() -> float {
@@ -50,6 +52,37 @@ ResolvedGameValue resolve_game_value(const GameValueConfig& gvc, const mettagrid
           rgv.mutable_ = false;
           float val = c.value;
           rgv.compute_fn = [val]() -> float { return val; };
+        } else if constexpr (std::is_same_v<T, RandomValueConfig>) {
+          rgv.mutable_ = false;
+          if (c.min_source || c.max_source) {
+            int static_lo = c.min_value;
+            int static_hi = c.max_value;
+            std::optional<ResolvedGameValue> resolved_min;
+            std::optional<ResolvedGameValue> resolved_max;
+            if (c.min_source) {
+              resolved_min = resolve_game_value(std::make_shared<SumValueConfig>(*c.min_source), ctx);
+            }
+            if (c.max_source) {
+              resolved_max = resolve_game_value(std::make_shared<SumValueConfig>(*c.max_source), ctx);
+            }
+            std::mt19937* rng = ctx.rng;
+            rgv.compute_fn = [static_lo, static_hi, resolved_min, resolved_max, rng]() -> float {
+              int lo = resolved_min ? static_cast<int>(resolved_min->read()) : static_lo;
+              int hi = resolved_max ? static_cast<int>(resolved_max->read()) : static_hi;
+              if (hi < lo || rng == nullptr) return static_cast<float>(lo);
+              std::uniform_int_distribution<int> dist(lo, hi);
+              return static_cast<float>(dist(*rng));
+            };
+          } else {
+            int lo = c.min_value;
+            int hi = c.max_value;
+            std::mt19937* rng = ctx.rng;
+            rgv.compute_fn = [lo, hi, rng]() -> float {
+              if (hi < lo || rng == nullptr) return static_cast<float>(lo);
+              std::uniform_int_distribution<int> dist(lo, hi);
+              return static_cast<float>(dist(*rng));
+            };
+          }
         } else if constexpr (std::is_same_v<T, QueryInventoryValueConfig>) {
           rgv.mutable_ = false;
           auto query = c.query;
@@ -140,6 +173,18 @@ ResolvedGameValue resolve_game_value(const GameValueConfig& gvc, const mettagrid
               best = std::min(best, ctx.resolve_game_value(value, mettagrid::EntityRef::actor));
             }
             return best;
+          };
+        } else if constexpr (std::is_same_v<T, std::shared_ptr<ExpValueConfig>>) {
+          rgv.mutable_ = false;
+          if (!c) {
+            rgv.compute_fn = []() -> float { return 1.0f; };
+            return rgv;
+          }
+          float base = c->base;
+          auto exponent = c->exponent;
+          rgv.compute_fn = [base, exponent, ctx]() -> float {
+            float exp_val = resolve_game_value(exponent, ctx).read();
+            return std::pow(base, exp_val);
           };
         }
         return rgv;

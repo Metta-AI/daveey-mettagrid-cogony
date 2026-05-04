@@ -102,11 +102,6 @@ struct QueryInventoryMutationConfig {
   std::vector<std::pair<InventoryItem, std::string>> transfer_stat_names;
 };
 
-struct QueryPlaceAdjacentMutationConfig {
-  std::shared_ptr<QueryConfig> query;
-  EntityRef target = EntityRef::actor;
-};
-
 struct RemoveTagsWithPrefixMutationConfig {
   EntityRef entity = EntityRef::target;
   std::vector<int> tag_ids;  // All tag IDs sharing the prefix (resolved at config time)
@@ -138,6 +133,114 @@ struct RaycastSpawnMutationConfig {
   std::vector<FilterConfig> blocker;                   // Filters that identify blocking objects
 };
 
+// Cogony-specific mutations (multi-channel combat, reboot, loot, heal).
+
+struct CogonyAttackMutationConfig {
+  // Each pair: (actor_attack_resource, target_defend_resource)
+  std::vector<std::pair<InventoryItem, InventoryItem>> channels;
+  InventoryItem health_id = 0;  // coherence
+  // Per-channel damage tracking on target (same length as channels)
+  std::vector<InventoryItem> damage_tracking_ids;
+  bool strike_back = true;
+  // Death drop: when target coherence drops to 0, generate rand(1, level*multiplier)
+  // of drop_resource on the target. Disabled when drop_enabled is false.
+  bool drop_enabled = false;
+  InventoryItem drop_resource = 0;
+  InventoryItem drop_level_id = 0;     // level resource for scaling
+  int drop_multiplier = 10;            // max = level * multiplier
+};
+
+struct CogonyCogRebootMutationConfig {
+  InventoryItem coherence_id = 0;
+  InventoryItem reboot_id = 0;
+  std::vector<InventoryItem> gear_ids;  // lose 1 random gear on reboot
+};
+
+struct CogonyExtractorRebootMutationConfig {
+  InventoryItem coherence_id = 0;
+  InventoryItem reboot_id = 0;
+  InventoryItem level_id = 0;
+  std::vector<InventoryItem> resist_ids;
+  std::vector<InventoryItem> dmg_ids;
+  std::vector<InventoryItem> sys_damage_ids;
+  int coherence_per_level = 20;
+  int dmg_level_offset = -3;
+};
+
+struct CogonyJunctionRebootMutationConfig {
+  InventoryItem coherence_id = 0;
+  InventoryItem reboot_id = 0;
+  InventoryItem level_id = 0;
+  std::vector<InventoryItem> resist_ids;
+  std::vector<InventoryItem> dmg_ids;
+  std::vector<InventoryItem> sys_damage_ids;
+  int coherence_per_level = 20;
+  int dmg_level_offset = -3;
+};
+
+struct CogonyLootMutationConfig {
+  std::vector<InventoryItem> resource_ids;
+};
+
+struct CogonyHealMutationConfig {
+  InventoryItem patch_id = 0;     // actor's heal stat
+  InventoryItem coherence_id = 0; // target's health
+};
+
+struct CogonyMarketMutationConfig {
+  // Element resource IDs on the actor (cargo to sell).
+  std::vector<InventoryItem> element_ids;
+  // Price resource IDs on the target (market), same order as element_ids.
+  // Market inventory holds current price per element.
+  std::vector<InventoryItem> price_ids;
+  // Sold-count resource IDs on the target (tracks last N sales per element).
+  std::vector<InventoryItem> sold_ids;
+  InventoryItem creds_id = 0;  // actor's creds resource
+  int history_window = 10;      // number of recent transactions to track
+  int tax_percent = 0;           // percentage of creds kept on market (tax)
+};
+
+enum class StakeMode : int { CLAIM = 0, MINT = 1, BURN = 2 };
+
+struct CogonyStakeMutationConfig {
+  InventoryItem stake_id = 0;
+  InventoryItem creds_id = 0;
+  InventoryItem invested_id = 0;
+  InventoryItem dividends_id = 0;
+  InventoryItem total_stake_id = 0;
+  InventoryItem curve_reserve_id = 0;
+  InventoryItem stake_cost_id = 0;
+  int hub_tag_id = -1;
+  int k = 10;
+  StakeMode mode = StakeMode::CLAIM;
+};
+
+struct CogonyTrapTriggerMutationConfig {
+  InventoryItem coherence_id = 0;
+  InventoryItem scrambled_id = 0;
+  InventoryItem mobile_id = 0;
+  int damage = 5;
+  int scramble_ticks = 10;
+};
+
+struct CogonyTrapDropMutationConfig {
+  std::string object_type;
+  std::vector<std::pair<std::string, int>> initial_resources;
+};
+
+struct CogonyJumpMutationConfig {};
+
+struct CogonyHubIncomeMutationConfig {
+  InventoryItem creds_id = 0;
+  InventoryItem dividends_id = 0;
+  InventoryItem total_stake_id = 0;
+  InventoryItem stake_id = 0;
+  InventoryItem revenue_id = 0;
+  int team_tag_id = -1;
+  int creds_per_junction = 10;
+  int champion_pct = 30;
+};
+
 // Variant type for all mutation configs
 using MutationConfig = std::variant<ResourceDeltaMutationConfig,
                                     ResourceTransferMutationConfig,
@@ -149,7 +252,6 @@ using MutationConfig = std::variant<ResourceDeltaMutationConfig,
                                     GameValueMutationConfig,
                                     RecomputeMaterializedQueryMutationConfig,
                                     QueryInventoryMutationConfig,
-                                    QueryPlaceAdjacentMutationConfig,
                                     RemoveTagsWithPrefixMutationConfig,
                                     RelocateMutationConfig,
                                     SwapMutationConfig,
@@ -158,7 +260,19 @@ using MutationConfig = std::variant<ResourceDeltaMutationConfig,
                                     RaycastSpawnMutationConfig,
                                     ChangeVibeMutationConfig,
                                     PushObjectMutationConfig,
-                                    SetRelativeTargetMutationConfig>;
+                                    SetRelativeTargetMutationConfig,
+                                    CogonyAttackMutationConfig,
+                                    CogonyCogRebootMutationConfig,
+                                    CogonyExtractorRebootMutationConfig,
+                                    CogonyJunctionRebootMutationConfig,
+                                    CogonyLootMutationConfig,
+                                    CogonyHealMutationConfig,
+                                    CogonyMarketMutationConfig,
+                                    CogonyStakeMutationConfig,
+                                    CogonyHubIncomeMutationConfig,
+                                    CogonyTrapDropMutationConfig,
+                                    CogonyJumpMutationConfig,
+                                    CogonyTrapTriggerMutationConfig>;
 
 }  // namespace mettagrid
 

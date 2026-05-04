@@ -35,11 +35,12 @@ proc onReplayLoaded*() =
   clearTalkCompose()
   resetMonologueCaches()
 
-  needsInitialFit = true
   replay.discoverTeams()
 
   let config = loadConfig()
   applyUIState(config)
+  # Auto-fit only when no saved camera exists; otherwise honor the restore.
+  needsInitialFit = not config.hasSavedCamera
   if selected != nil:
     # Route restored selection through selectObject so team tracking is consistent.
     selectObject(selected)

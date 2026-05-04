@@ -6,12 +6,14 @@ from typing import TYPE_CHECKING
 
 from mettagrid.config.game_value import (
     ConstValue,
+    ExpGameValue,
     GameValue,
     InventoryValue,
     MaxGameValue,
     MinGameValue,
     QueryCountValue,
     QueryInventoryValue,
+    RandomValue,
     RatioGameValue,
     Scope,
     StatValue,
@@ -24,6 +26,7 @@ from mettagrid.mettagrid_c import MaxValueConfig as CppMaxValueConfig
 from mettagrid.mettagrid_c import MinValueConfig as CppMinValueConfig
 from mettagrid.mettagrid_c import QueryCountValueConfig as CppQueryCountValueConfig
 from mettagrid.mettagrid_c import QueryInventoryValueConfig as CppQueryInventoryValueConfig
+from mettagrid.mettagrid_c import RandomValueConfig as CppRandomValueConfig
 from mettagrid.mettagrid_c import RatioValueConfig as CppRatioValueConfig
 from mettagrid.mettagrid_c import StatValueConfig as CppStatValueConfig
 from mettagrid.mettagrid_c import SumValueConfig as CppSumValueConfig
@@ -50,6 +53,22 @@ def resolve_game_value(gv: GameValue, id_maps: CppIdMaps):
     if isinstance(gv, ConstValue):
         cfg = CppConstValueConfig()
         cfg.value = gv.value
+        return cfg
+
+    if isinstance(gv, RandomValue):
+        cfg = CppRandomValueConfig()
+        cfg.min_value = gv.min_value
+        cfg.max_value = gv.max_value
+        if gv.min_source is not None:
+            min_wrap = CppSumValueConfig()
+            min_wrap.values = [resolve_game_value(gv.min_source, id_maps)]
+            min_wrap.weights = [1.0]
+            cfg.min_source = min_wrap
+        if gv.max_source is not None:
+            max_wrap = CppSumValueConfig()
+            max_wrap.values = [resolve_game_value(gv.max_source, id_maps)]
+            max_wrap.weights = [1.0]
+            cfg.max_source = max_wrap
         return cfg
 
     if isinstance(gv, QueryInventoryValue):
@@ -96,6 +115,13 @@ def resolve_game_value(gv: GameValue, id_maps: CppIdMaps):
             cfg.add_value(resolve_game_value(value, id_maps))
         return cfg
 
+    if isinstance(gv, ExpGameValue):
+        from mettagrid.mettagrid_c import ExpValueConfig as CppExpValueConfig
+        cfg = CppExpValueConfig()
+        cfg.base = gv.base
+        cfg.exponent = resolve_game_value(gv.exponent, id_maps)
+        return cfg
+
     raise ValueError(f"Unknown GameValue type: {type(gv)}")
 
 
@@ -103,4 +129,5 @@ def _convert_scope(scope: Scope) -> GameValueScope:
     return {
         Scope.AGENT: GameValueScope.AGENT,
         Scope.GAME: GameValueScope.GAME,
+        Scope.TARGET: GameValueScope.TARGET,
     }[scope]

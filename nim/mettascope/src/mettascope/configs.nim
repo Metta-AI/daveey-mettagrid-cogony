@@ -1,7 +1,8 @@
 import
   std/strutils,
-  windy, jsony,
-  common
+  windy, jsony, vmath,
+  common,
+  gamemode/camera
 
 type
   SettingsConfig* = object
@@ -25,6 +26,9 @@ type
   MettascopeConfig* = object
     windowWidth*: int32
     windowHeight*: int32
+    windowX*: int32
+    windowY*: int32
+    hasSavedWindowPos*: bool
     uiScale*: float32
     panelLayout*: AreaLayoutConfig
     playSpeed*: float32
@@ -32,6 +36,9 @@ type
     selectedAgentId*: int
     gameMode*: GameMode
     soundMuted*: bool
+    cameraPos*: Vec2
+    cameraZoom*: float32
+    hasSavedCamera*: bool
 
 const DefaultConfig* = MettascopeConfig(
   windowWidth: 1200,
@@ -50,7 +57,8 @@ const DefaultConfig* = MettascopeConfig(
     showHeatmap: false
   ),
   selectedAgentId: -1,
-  gameMode: Game
+  gameMode: Game,
+  cameraZoom: 10.0,
 )
 
 proc normalizeConfig(config: var MettascopeConfig): bool =
@@ -58,6 +66,9 @@ proc normalizeConfig(config: var MettascopeConfig): bool =
   result = false
   if config.uiScale <= 0.0'f:
     config.uiScale = DefaultConfig.uiScale
+    result = true
+  if config.cameraZoom <= 0.0'f:
+    config.cameraZoom = DefaultConfig.cameraZoom
     result = true
 
 proc serializeArea*(area: Area): AreaLayoutConfig =
@@ -174,6 +185,10 @@ proc applyUIState*(config: MettascopeConfig) =
   if replay != nil and config.selectedAgentId >= 0 and config.selectedAgentId < replay.agents.len:
     selected = replay.agents[config.selectedAgentId]
   soundMuted = config.soundMuted
+  if worldMapZoomInfo != nil and config.hasSavedCamera:
+    worldMapZoomInfo.pos = config.cameraPos
+    worldMapZoomInfo.zoom = clamp(
+      config.cameraZoom, worldMapZoomInfo.minZoom, worldMapZoomInfo.maxZoom)
 
 proc saveUIState*() =
   ## Save the current UI state to config.
@@ -196,6 +211,14 @@ proc saveUIState*() =
   if selected != nil and selected.isAgent:
     config.selectedAgentId = selected.agentId
   config.soundMuted = soundMuted
+  if worldMapZoomInfo != nil:
+    config.cameraPos = worldMapZoomInfo.pos
+    config.cameraZoom = worldMapZoomInfo.zoom
+    config.hasSavedCamera = true
+  if window != nil:
+    config.windowX = window.pos.x
+    config.windowY = window.pos.y
+    config.hasSavedWindowPos = true
   saveConfig(config)
 
 proc savePanelLayout*() =

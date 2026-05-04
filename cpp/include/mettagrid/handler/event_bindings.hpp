@@ -22,7 +22,6 @@ inline void bind_event_config(py::module& m) {
           [](EventConfig& self, const QueryConfigHolder& holder) { self.target_query = holder.config; },
           py::arg("query"))
       .def_readwrite("timesteps", &EventConfig::timesteps)
-      .def_readwrite("priority", &EventConfig::priority)
       .def_readwrite("max_targets", &EventConfig::max_targets)
       .def_readwrite("fallback", &EventConfig::fallback)
       // Add filter methods - each type wraps into the variant
@@ -104,10 +103,6 @@ inline void bind_event_config(py::module& m) {
           [](EventConfig& self, const QueryInventoryMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"))
       .def(
-          "add_query_place_adjacent_mutation",
-          [](EventConfig& self, const QueryPlaceAdjacentMutationConfig& cfg) { self.mutations.push_back(cfg); },
-          py::arg("mutation"))
-      .def(
           "add_change_vibe_mutation",
           [](EventConfig& self, const ChangeVibeMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"))
@@ -130,6 +125,38 @@ inline void bind_event_config(py::module& m) {
       .def(
           "add_set_relative_target_mutation",
           [](EventConfig& self, const SetRelativeTargetMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_attack_mutation",
+          [](EventConfig& self, const CogonyAttackMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_cog_reboot_mutation",
+          [](EventConfig& self, const CogonyCogRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_extractor_reboot_mutation",
+          [](EventConfig& self, const CogonyExtractorRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_junction_reboot_mutation",
+          [](EventConfig& self, const CogonyJunctionRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_loot_mutation",
+          [](EventConfig& self, const CogonyLootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_heal_mutation",
+          [](EventConfig& self, const CogonyHealMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_hub_income_mutation",
+          [](EventConfig& self, const CogonyHubIncomeMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_trap_trigger_mutation",
+          [](EventConfig& self, const CogonyTrapTriggerMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"));
 }
 

@@ -1,7 +1,7 @@
 import
   std/[algorithm, math, os, tables, options, sets],
   chroma, vmath, windy, silky,
-  ../[common, actions, replays, colors],
+  ../[common, actions, replays, colors, configs],
   ./[team, pathfinding, tilemap, pixelator, shaderquad, terrains,
     heatmap, heatmapshader, pipegrid, starfield, custom_hud, camera, movement],
   ../panelmode/objectpanel
@@ -45,6 +45,8 @@ var
   worldHeatmap*: Heatmap
   heatmapShaderInitialized*: bool = false
   needsInitialFit*: bool = true
+  lastSavedCameraPos*: Vec2 = vec2(NaN, NaN)
+  lastSavedCameraZoom*: float32 = NaN
 
 proc ensureHeatmapReady*() =
   ## Lazily initialize heatmap data and shader on first use.
@@ -506,7 +508,7 @@ proc issueOrderAt(gridPos: IVec2, mousePos: Vec2, effectiveShift: bool, effectiv
         approachDir = if offsetX > 0: ivec2(1, 0) else: ivec2(-1, 0)
       else:
         approachDir = if offsetY > 0: ivec2(0, 1) else: ivec2(0, -1)
-      objective = Objective(kind: Bump, pos: gridPos, approachDir: approachDir, repeat: effectiveRepeat)
+      objective = Objective(kind: Bump, pos: gridPos, approachDir: approachDir, repeat: false)
     else:
       objective = Objective(kind: Move, pos: gridPos, approachDir: ivec2(0, 0), repeat: effectiveRepeat)
   else:
@@ -823,20 +825,6 @@ proc drawObjects*() {.measure.} =
           getTeamColor(teamIdx),
           lamp = "objects/junction.lamp"
         )
-      elif teamIdx >= 0:
-        let mask = spriteName & ".mask"
-        if mask in px:
-          px.drawSprite(
-            spriteName,
-            (pos * TileSize.float32 + SpriteOffset.vec2).ivec2,
-            getTeamColor(teamIdx),
-            mask
-          )
-        else:
-          px.drawSprite(
-            spriteName,
-            (pos * TileSize.float32 + SpriteOffset.vec2).ivec2
-          )
       else:
         px.drawSprite(
           spriteName,
@@ -1031,6 +1019,48 @@ proc drawAgentDecorations*() {.measure.} =
       let hud2 = getInventoryItem(agent, hud2Cfg.resource)
       let hud2Prev = getInventoryItem(agent, hud2Cfg.resource, prevStep)
       drawBar(ivec2(pos.x, pos.y - 61), colors.Yellow, NumPips, hud2Cfg.max, hud2, hud2Prev, MediumPip)
+
+proc drawStatusIcons*() {.measure.} =
+  ## Draw overhead effect icons for scrambled/rebooting agents.
+  for agent in replay.agents:
+    if not agent.alive.at:
+      continue
+    let pos = (agent.smoothPos * TileSize.float32).ivec2
+    let scrambled = getInventoryItem(agent, "scrambled")
+    if scrambled > 0:
+      px.drawSprite("icons/scrambled", ivec2(pos.x - 4, pos.y - 100))
+      continue
+    let reboot = getInventoryItem(agent, "reboot")
+    if reboot > 0:
+      px.drawSprite("icons/reboot", ivec2(pos.x - 4, pos.y - 100))
+
+proc drawObjectDecorations*() {.measure.} =
+  ## Draw coherence/reboot bar above non-agent objects with object_status.
+  const NumPips = 10
+  let prevStep = max(0, step - 1)
+  for obj in replay.objects:
+    if obj.typeName == "wall" or obj.typeName == "agent":
+      continue
+    if not replay.hasCustomStatus(obj):
+      continue
+    let items = replay.statusItems(obj)
+    if items.len == 0:
+      continue
+    let cfg0 = items[0]
+    var cur = getInventoryItem(obj, cfg0.resource)
+    var tint = parseBarColor(cfg0.color)
+    if cur == 0 and cfg0.alt_resource.len > 0:
+      cur = getInventoryItem(obj, cfg0.alt_resource)
+      tint = parseBarColor(cfg0.alt_color)
+    if cur >= cfg0.max and cfg0.alt_resource.len == 0:
+      continue
+    if cur <= 0:
+      continue
+    let prev = getInventoryItem(obj, cfg0.resource, prevStep)
+    let pos = (obj.smoothPos * TileSize.float32).ivec2
+    drawBar(
+      ivec2(pos.x, pos.y - 68), tint,
+      NumPips, cfg0.max, cur, prev, MediumPip)
 
 proc drawPolicyNames*() {.measure.} =
   ## Draw policy names above agents when the grid is active.
@@ -1482,6 +1512,8 @@ proc drawWorldMain*() {.measure.} =
   drawPolicyTarget()
 
   drawAgentDecorations()
+  drawStatusIcons()
+  drawObjectDecorations()
   drawPolicyNames()
   drawPlannedPath()
   drawMovePreview()
@@ -1630,6 +1662,14 @@ proc drawWorldMap*(zoomInfo: ZoomInfo) {.measure.} =
     keepSelectionInView(zoomInfo)
 
   zoomInfo.beginPanAndZoom()
+  # Persist camera whenever pos/zoom drifts from what we last wrote to disk.
+  # lastSavedPos is initialized to a sentinel so the first frame always saves
+  # (this also sets config.hasSavedCamera=true in saveUIState).
+  if zoomInfo.pos != lastSavedCameraPos or
+      zoomInfo.zoom != lastSavedCameraZoom:
+    lastSavedCameraPos = zoomInfo.pos
+    lastSavedCameraZoom = zoomInfo.zoom
+    saveUIState()
 
   if zoomInfo.hasMouse:
     useSelections(zoomInfo)

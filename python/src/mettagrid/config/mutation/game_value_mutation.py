@@ -6,7 +6,18 @@ from typing import Literal, Optional, Union
 
 from pydantic import Field, model_validator
 
-from mettagrid.config.game_value import ConstValue, InventoryValue, StatValue
+from mettagrid.config.game_value import (
+    ConstValue,
+    InventoryValue,
+    MaxGameValue,
+    MinGameValue,
+    QueryCountValue,
+    QueryInventoryValue,
+    RandomValue,
+    RatioGameValue,
+    StatValue,
+    SumGameValue,
+)
 from mettagrid.config.mutation.mutation import EntityTarget, Mutation
 
 
@@ -21,9 +32,13 @@ class SetGameValueMutation(Mutation):
     value: Union[InventoryValue, StatValue]
     delta: float = Field(default=0, description="Static delta (used when source is not provided)")
     target: EntityTarget = Field(default=EntityTarget.ACTOR, description="Entity to apply to")
-    source: Optional[Union[InventoryValue, StatValue, ConstValue]] = Field(
-        default=None, description="Dynamic source for the delta value"
-    )
+    source: Optional[
+        Union[
+            InventoryValue, StatValue, ConstValue, RandomValue,
+            QueryInventoryValue, QueryCountValue,
+            SumGameValue, RatioGameValue, MaxGameValue, MinGameValue,
+        ]
+    ] = Field(default=None, description="Dynamic source for the delta value")
 
     @model_validator(mode="after")
     def _check_source_or_delta(self) -> "SetGameValueMutation":

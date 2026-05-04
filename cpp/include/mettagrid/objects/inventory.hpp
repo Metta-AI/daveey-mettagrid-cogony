@@ -31,9 +31,9 @@ struct SharedInventoryLimit {
         modifier_sum += static_cast<int>(it->second) * static_cast<int>(bonus);
       }
     }
-    // Apply formula: min(max_limit, max(min_limit, modifier_sum))
-    // This avoids UB from std::clamp when min_limit > max_limit; max_limit wins in that case.
-    int effective = std::min(static_cast<int>(max_limit), std::max(static_cast<int>(min_limit), modifier_sum));
+    // Additive formula: min(max_limit, min_limit + modifier_sum)
+    // base + sum(modifier * qty). Base is the floor; modifiers add on top.
+    int effective = std::min(static_cast<int>(max_limit), static_cast<int>(min_limit) + modifier_sum);
     // Clamp to valid range (0 to max InventoryQuantity which is uint16_t)
     effective = std::clamp(effective, 0, 65535);
     return static_cast<InventoryQuantity>(effective);

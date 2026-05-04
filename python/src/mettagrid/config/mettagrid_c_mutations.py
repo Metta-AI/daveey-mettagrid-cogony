@@ -10,10 +10,21 @@ from mettagrid.config.mutation import (
     AddTagMutation,
     ChangeVibeMutation,
     ClearInventoryMutation,
+    CogonyAttackMutation,
+    CogonyHealMutation,
+    CogonyHubIncomeMutation,
+    CogonyLootMutation,
+    CogonyMarketMutation,
+    CogonyStakeMutation,
+    CogonyJumpMutation,
+    CogonyTrapDropMutation,
+    CogonyTrapTriggerMutation,
+    CogonyCogRebootMutation,
+    CogonyExtractorRebootMutation,
+    CogonyJunctionRebootMutation,
     EntityTarget,
     PushObjectMutation,
     QueryInventoryMutation,
-    QueryPlaceAdjacentMutation,
     RaycastSpawnMutation,
     RecomputeMaterializedQueryMutation,
     RelocateMutation,
@@ -37,7 +48,6 @@ from mettagrid.mettagrid_c import EntityRef as CppEntityRef
 from mettagrid.mettagrid_c import GameValueMutationConfig as CppGameValueMutationConfig
 from mettagrid.mettagrid_c import PushObjectMutationConfig as CppPushObjectMutationConfig
 from mettagrid.mettagrid_c import QueryInventoryMutationConfig as CppQueryInventoryMutationConfig
-from mettagrid.mettagrid_c import QueryPlaceAdjacentMutationConfig as CppQueryPlaceAdjacentMutationConfig
 from mettagrid.mettagrid_c import RaycastSpawnMutationConfig as CppRaycastSpawnMutationConfig
 from mettagrid.mettagrid_c import (
     RecomputeMaterializedQueryMutationConfig as CppRecomputeMaterializedQueryMutationConfig,
@@ -264,20 +274,6 @@ def convert_mutations(
                 ]
             target_obj.add_query_inventory_mutation(cpp_mutation)
 
-        elif isinstance(mutation, QueryPlaceAdjacentMutation):
-            from mettagrid.config.mettagrid_c_config import _convert_tag_query  # noqa: PLC0415
-
-            cpp_mutation = CppQueryPlaceAdjacentMutationConfig()
-            cpp_mutation.set_query(
-                _convert_tag_query(
-                    mutation.query,
-                    id_maps,
-                    context=f"{context} query_place_adjacent mutation",
-                )
-            )
-            cpp_mutation.target = convert_entity_ref(mutation.target)
-            target_obj.add_query_place_adjacent_mutation(cpp_mutation)
-
         elif isinstance(mutation, SpawnObjectMutation):
             cpp_mutation = CppSpawnObjectMutationConfig()
             cpp_mutation.object_type = mutation.object_type
@@ -303,3 +299,133 @@ def convert_mutations(
 
         elif isinstance(mutation, RaycastSpawnMutation):
             _convert_raycast_spawn_mutation(mutation, target_obj, id_maps)
+
+        elif isinstance(mutation, CogonyAttackMutation):
+            from mettagrid.mettagrid_c import CogonyAttackMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.channels = [
+                (id_maps.resource_name_to_id[a], id_maps.resource_name_to_id[d])
+                for a, d in mutation.channels
+            ]
+            cfg.health_id = id_maps.resource_name_to_id[mutation.health]
+            cfg.damage_tracking_ids = [id_maps.resource_name_to_id[n] for n in mutation.damage_tracking]
+            cfg.strike_back = mutation.strike_back
+            if mutation.drop_resource:
+                cfg.drop_enabled = True
+                cfg.drop_resource = id_maps.resource_name_to_id[mutation.drop_resource]
+                cfg.drop_level_id = id_maps.resource_name_to_id[mutation.drop_level]
+                cfg.drop_multiplier = mutation.drop_multiplier
+            target_obj.add_cogony_attack_mutation(cfg)
+
+        elif isinstance(mutation, CogonyCogRebootMutation):
+            from mettagrid.mettagrid_c import CogonyCogRebootMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.coherence_id = id_maps.resource_name_to_id[mutation.health]
+            cfg.reboot_id = id_maps.resource_name_to_id[mutation.reboot]
+            cfg.gear_ids = [id_maps.resource_name_to_id[n] for n in mutation.gear_stats]
+            target_obj.add_cogony_cog_reboot_mutation(cfg)
+
+        elif isinstance(mutation, CogonyExtractorRebootMutation):
+            from mettagrid.mettagrid_c import CogonyExtractorRebootMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.coherence_id = id_maps.resource_name_to_id[mutation.health]
+            cfg.reboot_id = id_maps.resource_name_to_id[mutation.reboot]
+            cfg.level_id = id_maps.resource_name_to_id[mutation.level]
+            cfg.resist_ids = [id_maps.resource_name_to_id[n] for n in mutation.resist_stats]
+            cfg.dmg_ids = [id_maps.resource_name_to_id[n] for n in mutation.dmg_stats]
+            cfg.sys_damage_ids = [id_maps.resource_name_to_id[n] for n in mutation.sys_damage_stats]
+            cfg.coherence_per_level = mutation.coherence_per_level
+            cfg.dmg_level_offset = mutation.dmg_level_offset
+            target_obj.add_cogony_extractor_reboot_mutation(cfg)
+
+        elif isinstance(mutation, CogonyJunctionRebootMutation):
+            from mettagrid.mettagrid_c import CogonyJunctionRebootMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.coherence_id = id_maps.resource_name_to_id[mutation.health]
+            cfg.reboot_id = id_maps.resource_name_to_id[mutation.reboot]
+            cfg.level_id = id_maps.resource_name_to_id[mutation.level]
+            cfg.resist_ids = [id_maps.resource_name_to_id[n] for n in mutation.resist_stats]
+            cfg.dmg_ids = [id_maps.resource_name_to_id[n] for n in mutation.dmg_stats]
+            cfg.sys_damage_ids = [id_maps.resource_name_to_id[n] for n in mutation.sys_damage_stats]
+            cfg.coherence_per_level = mutation.coherence_per_level
+            cfg.dmg_level_offset = mutation.dmg_level_offset
+            target_obj.add_cogony_junction_reboot_mutation(cfg)
+
+        elif isinstance(mutation, CogonyLootMutation):
+            from mettagrid.mettagrid_c import CogonyLootMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.resource_ids = [id_maps.resource_name_to_id[n] for n in mutation.resources]
+            target_obj.add_cogony_loot_mutation(cfg)
+
+        elif isinstance(mutation, CogonyHealMutation):
+            from mettagrid.mettagrid_c import CogonyHealMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.patch_id = id_maps.resource_name_to_id[mutation.patch]
+            cfg.coherence_id = id_maps.resource_name_to_id[mutation.health]
+            target_obj.add_cogony_heal_mutation(cfg)
+
+        elif isinstance(mutation, CogonyMarketMutation):
+            from mettagrid.mettagrid_c import CogonyMarketMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.element_ids = [id_maps.resource_name_to_id[n] for n in mutation.elements]
+            cfg.price_ids = [id_maps.resource_name_to_id[n] for n in mutation.price_resources]
+            cfg.sold_ids = [id_maps.resource_name_to_id[n] for n in mutation.sold_resources]
+            cfg.creds_id = id_maps.resource_name_to_id[mutation.creds]
+            cfg.history_window = mutation.history_window
+            cfg.tax_percent = mutation.tax_percent
+            target_obj.add_cogony_market_mutation(cfg)
+
+        elif isinstance(mutation, CogonyStakeMutation):
+            from mettagrid.mettagrid_c import CogonyStakeMutationConfig as Cfg
+            from mettagrid.mettagrid_c import StakeMode
+            cfg = Cfg()
+            cfg.stake_id = id_maps.resource_name_to_id[mutation.stake]
+            cfg.creds_id = id_maps.resource_name_to_id[mutation.creds]
+            if mutation.invested:
+                cfg.invested_id = id_maps.resource_name_to_id[mutation.invested]
+            if mutation.dividends:
+                cfg.dividends_id = id_maps.resource_name_to_id[mutation.dividends]
+            cfg.total_stake_id = id_maps.resource_name_to_id[mutation.total_stake]
+            cfg.curve_reserve_id = id_maps.resource_name_to_id[mutation.curve_reserve]
+            cfg.stake_cost_id = id_maps.resource_name_to_id[mutation.stake_cost]
+            if mutation.hub_tag:
+                cfg.hub_tag_id = id_maps.tag_name_to_id[mutation.hub_tag]
+            cfg.k = mutation.k
+            cfg.mode = {"claim": StakeMode.CLAIM, "mint": StakeMode.MINT, "burn": StakeMode.BURN}[mutation.mode]
+            target_obj.add_cogony_stake_mutation(cfg)
+
+        elif isinstance(mutation, CogonyHubIncomeMutation):
+            from mettagrid.mettagrid_c import CogonyHubIncomeMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.creds_id = id_maps.resource_name_to_id[mutation.creds]
+            if mutation.dividends:
+                cfg.dividends_id = id_maps.resource_name_to_id[mutation.dividends]
+            cfg.total_stake_id = id_maps.resource_name_to_id[mutation.total_stake]
+            cfg.stake_id = id_maps.resource_name_to_id[mutation.stake]
+            cfg.revenue_id = id_maps.resource_name_to_id[mutation.revenue]
+            cfg.team_tag_id = id_maps.tag_name_to_id[mutation.team_tag]
+            cfg.creds_per_junction = mutation.creds_per_junction
+            cfg.champion_pct = mutation.champion_pct
+            target_obj.add_cogony_hub_income_mutation(cfg)
+
+        elif isinstance(mutation, CogonyTrapDropMutation):
+            from mettagrid.mettagrid_c import CogonyTrapDropMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.object_type = mutation.object_type
+            cfg.initial_resources = list(mutation.initial_resources.items())
+            target_obj.add_cogony_trap_drop_mutation(cfg)
+
+        elif isinstance(mutation, CogonyTrapTriggerMutation):
+            from mettagrid.mettagrid_c import CogonyTrapTriggerMutationConfig as Cfg
+            cfg = Cfg()
+            cfg.coherence_id = id_maps.resource_name_to_id[mutation.coherence]
+            cfg.scrambled_id = id_maps.resource_name_to_id[mutation.scrambled]
+            cfg.mobile_id = id_maps.resource_name_to_id[mutation.mobile]
+            cfg.damage = mutation.damage
+            cfg.scramble_ticks = mutation.scramble_ticks
+            target_obj.add_cogony_trap_trigger_mutation(cfg)
+
+        elif isinstance(mutation, CogonyJumpMutation):
+            from mettagrid.mettagrid_c import CogonyJumpMutationConfig as Cfg
+            cfg = Cfg()
+            target_obj.add_cogony_jump_mutation(cfg)

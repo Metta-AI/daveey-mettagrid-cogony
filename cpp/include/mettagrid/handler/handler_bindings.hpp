@@ -19,7 +19,8 @@ inline void bind_handler_config(py::module& m) {
   // GameValueScope enum
   py::enum_<GameValueScope>(m, "GameValueScope")
       .value("AGENT", GameValueScope::AGENT)
-      .value("GAME", GameValueScope::GAME);
+      .value("GAME", GameValueScope::GAME)
+      .value("TARGET", GameValueScope::TARGET);
 
   // Typed GameValue configs
   py::class_<InventoryValueConfig>(m, "InventoryValueConfig")
@@ -37,6 +38,13 @@ inline void bind_handler_config(py::module& m) {
   py::class_<ConstValueConfig>(m, "ConstValueConfig")
       .def(py::init<>())
       .def_readwrite("value", &ConstValueConfig::value);
+
+  py::class_<RandomValueConfig>(m, "RandomValueConfig")
+      .def(py::init<>())
+      .def_readwrite("min_value", &RandomValueConfig::min_value)
+      .def_readwrite("max_value", &RandomValueConfig::max_value)
+      .def_readwrite("min_source", &RandomValueConfig::min_source)
+      .def_readwrite("max_source", &RandomValueConfig::max_source);
 
   py::class_<QueryInventoryValueConfig>(m, "QueryInventoryValueConfig")
       .def(py::init<>())
@@ -83,6 +91,11 @@ inline void bind_handler_config(py::module& m) {
           "add_value",
           [](MinValueConfig& self, const GameValueConfig& value) { self.values.push_back(value); },
           py::arg("value"));
+
+  py::class_<ExpValueConfig, std::shared_ptr<ExpValueConfig>>(m, "ExpValueConfig")
+      .def(py::init<>())
+      .def_readwrite("base", &ExpValueConfig::base)
+      .def_readwrite("exponent", &ExpValueConfig::exponent);
 
   // EntityRef enum
   py::enum_<EntityRef>(m, "EntityRef").value("actor", EntityRef::actor).value("target", EntityRef::target);
@@ -354,6 +367,108 @@ inline void bind_handler_config(py::module& m) {
       .def_readwrite("health_resource", &AttackMutationConfig::health_resource)
       .def_readwrite("damage_multiplier_pct", &AttackMutationConfig::damage_multiplier_pct);
 
+  py::class_<CogonyAttackMutationConfig>(m, "CogonyAttackMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("channels", &CogonyAttackMutationConfig::channels)
+      .def_readwrite("health_id", &CogonyAttackMutationConfig::health_id)
+      .def_readwrite("damage_tracking_ids", &CogonyAttackMutationConfig::damage_tracking_ids)
+      .def_readwrite("strike_back", &CogonyAttackMutationConfig::strike_back)
+      .def_readwrite("drop_enabled", &CogonyAttackMutationConfig::drop_enabled)
+      .def_readwrite("drop_resource", &CogonyAttackMutationConfig::drop_resource)
+      .def_readwrite("drop_level_id", &CogonyAttackMutationConfig::drop_level_id)
+      .def_readwrite("drop_multiplier", &CogonyAttackMutationConfig::drop_multiplier);
+
+  py::class_<CogonyCogRebootMutationConfig>(m, "CogonyCogRebootMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("coherence_id", &CogonyCogRebootMutationConfig::coherence_id)
+      .def_readwrite("reboot_id", &CogonyCogRebootMutationConfig::reboot_id)
+      .def_readwrite("gear_ids", &CogonyCogRebootMutationConfig::gear_ids);
+
+  py::class_<CogonyExtractorRebootMutationConfig>(m, "CogonyExtractorRebootMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("coherence_id", &CogonyExtractorRebootMutationConfig::coherence_id)
+      .def_readwrite("reboot_id", &CogonyExtractorRebootMutationConfig::reboot_id)
+      .def_readwrite("level_id", &CogonyExtractorRebootMutationConfig::level_id)
+      .def_readwrite("resist_ids", &CogonyExtractorRebootMutationConfig::resist_ids)
+      .def_readwrite("dmg_ids", &CogonyExtractorRebootMutationConfig::dmg_ids)
+      .def_readwrite("sys_damage_ids", &CogonyExtractorRebootMutationConfig::sys_damage_ids)
+      .def_readwrite("coherence_per_level", &CogonyExtractorRebootMutationConfig::coherence_per_level)
+      .def_readwrite("dmg_level_offset", &CogonyExtractorRebootMutationConfig::dmg_level_offset);
+
+  py::class_<CogonyJunctionRebootMutationConfig>(m, "CogonyJunctionRebootMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("coherence_id", &CogonyJunctionRebootMutationConfig::coherence_id)
+      .def_readwrite("reboot_id", &CogonyJunctionRebootMutationConfig::reboot_id)
+      .def_readwrite("level_id", &CogonyJunctionRebootMutationConfig::level_id)
+      .def_readwrite("resist_ids", &CogonyJunctionRebootMutationConfig::resist_ids)
+      .def_readwrite("dmg_ids", &CogonyJunctionRebootMutationConfig::dmg_ids)
+      .def_readwrite("sys_damage_ids", &CogonyJunctionRebootMutationConfig::sys_damage_ids)
+      .def_readwrite("coherence_per_level", &CogonyJunctionRebootMutationConfig::coherence_per_level)
+      .def_readwrite("dmg_level_offset", &CogonyJunctionRebootMutationConfig::dmg_level_offset);
+
+  py::enum_<StakeMode>(m, "StakeMode")
+      .value("CLAIM", StakeMode::CLAIM)
+      .value("MINT", StakeMode::MINT)
+      .value("BURN", StakeMode::BURN);
+
+  py::class_<CogonyStakeMutationConfig>(m, "CogonyStakeMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("stake_id", &CogonyStakeMutationConfig::stake_id)
+      .def_readwrite("creds_id", &CogonyStakeMutationConfig::creds_id)
+      .def_readwrite("invested_id", &CogonyStakeMutationConfig::invested_id)
+      .def_readwrite("dividends_id", &CogonyStakeMutationConfig::dividends_id)
+      .def_readwrite("total_stake_id", &CogonyStakeMutationConfig::total_stake_id)
+      .def_readwrite("curve_reserve_id", &CogonyStakeMutationConfig::curve_reserve_id)
+      .def_readwrite("stake_cost_id", &CogonyStakeMutationConfig::stake_cost_id)
+      .def_readwrite("hub_tag_id", &CogonyStakeMutationConfig::hub_tag_id)
+      .def_readwrite("k", &CogonyStakeMutationConfig::k)
+      .def_readwrite("mode", &CogonyStakeMutationConfig::mode);
+
+  py::class_<CogonyHubIncomeMutationConfig>(m, "CogonyHubIncomeMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("creds_id", &CogonyHubIncomeMutationConfig::creds_id)
+      .def_readwrite("dividends_id", &CogonyHubIncomeMutationConfig::dividends_id)
+      .def_readwrite("total_stake_id", &CogonyHubIncomeMutationConfig::total_stake_id)
+      .def_readwrite("stake_id", &CogonyHubIncomeMutationConfig::stake_id)
+      .def_readwrite("team_tag_id", &CogonyHubIncomeMutationConfig::team_tag_id)
+      .def_readwrite("creds_per_junction", &CogonyHubIncomeMutationConfig::creds_per_junction)
+      .def_readwrite("revenue_id", &CogonyHubIncomeMutationConfig::revenue_id)
+      .def_readwrite("champion_pct", &CogonyHubIncomeMutationConfig::champion_pct);
+
+  py::class_<CogonyTrapTriggerMutationConfig>(m, "CogonyTrapTriggerMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("coherence_id", &CogonyTrapTriggerMutationConfig::coherence_id)
+      .def_readwrite("scrambled_id", &CogonyTrapTriggerMutationConfig::scrambled_id)
+      .def_readwrite("mobile_id", &CogonyTrapTriggerMutationConfig::mobile_id)
+      .def_readwrite("damage", &CogonyTrapTriggerMutationConfig::damage)
+      .def_readwrite("scramble_ticks", &CogonyTrapTriggerMutationConfig::scramble_ticks);
+
+  py::class_<CogonyTrapDropMutationConfig>(m, "CogonyTrapDropMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("object_type", &CogonyTrapDropMutationConfig::object_type)
+      .def_readwrite("initial_resources", &CogonyTrapDropMutationConfig::initial_resources);
+
+  py::class_<CogonyJumpMutationConfig>(m, "CogonyJumpMutationConfig")
+      .def(py::init<>());
+
+  py::class_<CogonyLootMutationConfig>(m, "CogonyLootMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("resource_ids", &CogonyLootMutationConfig::resource_ids);
+
+  py::class_<CogonyHealMutationConfig>(m, "CogonyHealMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("patch_id", &CogonyHealMutationConfig::patch_id)
+      .def_readwrite("coherence_id", &CogonyHealMutationConfig::coherence_id);
+
+  py::class_<CogonyMarketMutationConfig>(m, "CogonyMarketMutationConfig")
+      .def(py::init<>())
+      .def_readwrite("element_ids", &CogonyMarketMutationConfig::element_ids)
+      .def_readwrite("price_ids", &CogonyMarketMutationConfig::price_ids)
+      .def_readwrite("sold_ids", &CogonyMarketMutationConfig::sold_ids)
+      .def_readwrite("creds_id", &CogonyMarketMutationConfig::creds_id)
+      .def_readwrite("history_window", &CogonyMarketMutationConfig::history_window)
+      .def_readwrite("tax_percent", &CogonyMarketMutationConfig::tax_percent);
+
   py::class_<StatsMutationConfig>(m, "StatsMutationConfig")
       .def(py::init<>())
       .def(py::init([](std::string stat_name, StatsTarget target, StatsEntity entity) {
@@ -447,14 +562,6 @@ inline void bind_handler_config(py::module& m) {
       .def(
           "set_query",
           [](QueryInventoryMutationConfig& self, const QueryConfigHolder& q) { self.query = q.config; },
-          py::arg("query"));
-
-  py::class_<QueryPlaceAdjacentMutationConfig>(m, "QueryPlaceAdjacentMutationConfig")
-      .def(py::init<>())
-      .def_readwrite("target", &QueryPlaceAdjacentMutationConfig::target)
-      .def(
-          "set_query",
-          [](QueryPlaceAdjacentMutationConfig& self, const QueryConfigHolder& q) { self.query = q.config; },
           py::arg("query"));
 
   // Move-specific filter configs (no fields, just marker types)
@@ -584,10 +691,6 @@ inline void bind_handler_config(py::module& m) {
           [](HandlerConfig& self, const QueryInventoryMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"))
       .def(
-          "add_query_place_adjacent_mutation",
-          [](HandlerConfig& self, const QueryPlaceAdjacentMutationConfig& cfg) { self.mutations.push_back(cfg); },
-          py::arg("mutation"))
-      .def(
           "add_change_vibe_mutation",
           [](HandlerConfig& self, const ChangeVibeMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"))
@@ -632,6 +735,54 @@ inline void bind_handler_config(py::module& m) {
       .def(
           "add_set_relative_target_mutation",
           [](HandlerConfig& self, const SetRelativeTargetMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_attack_mutation",
+          [](HandlerConfig& self, const CogonyAttackMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_cog_reboot_mutation",
+          [](HandlerConfig& self, const CogonyCogRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_extractor_reboot_mutation",
+          [](HandlerConfig& self, const CogonyExtractorRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_junction_reboot_mutation",
+          [](HandlerConfig& self, const CogonyJunctionRebootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_loot_mutation",
+          [](HandlerConfig& self, const CogonyLootMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_heal_mutation",
+          [](HandlerConfig& self, const CogonyHealMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_market_mutation",
+          [](HandlerConfig& self, const CogonyMarketMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_stake_mutation",
+          [](HandlerConfig& self, const CogonyStakeMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_hub_income_mutation",
+          [](HandlerConfig& self, const CogonyHubIncomeMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_trap_drop_mutation",
+          [](HandlerConfig& self, const CogonyTrapDropMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_jump_mutation",
+          [](HandlerConfig& self, const CogonyJumpMutationConfig& cfg) { self.mutations.push_back(cfg); },
+          py::arg("mutation"))
+      .def(
+          "add_cogony_trap_trigger_mutation",
+          [](HandlerConfig& self, const CogonyTrapTriggerMutationConfig& cfg) { self.mutations.push_back(cfg); },
           py::arg("mutation"));
 
   // ResourceDelta for presence_deltas

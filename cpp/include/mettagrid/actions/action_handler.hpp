@@ -60,8 +60,11 @@ class ActionHandler {
 public:
   unsigned char priority;
 
-  ActionHandler(const ActionConfig& cfg, const std::string& action_name) : priority(0), _action_name(action_name) {
-    (void)cfg;
+  ActionHandler(const ActionConfig& cfg, const std::string& action_name)
+      : priority(0),
+        _action_name(action_name),
+        _required_resources(cfg.required_resources),
+        _consumed_resources(cfg.consumed_resources) {
   }
 
   virtual ~ActionHandler() {}
@@ -77,6 +80,14 @@ public:
   // on the environment, and should imply that the agent effectively took a noop action.
   bool handle_action(Agent& actor, ActionArg arg, const mettagrid::HandlerContext& ctx) {
     actor.last_animation_id = kNoAnimation;
+
+    // Check required_resources before executing.
+    for (auto& [rid, min_amount] : _required_resources) {
+      if (actor.inventory.amount(rid) < min_amount) {
+        return false;
+      }
+    }
+
     bool success = _handle_action(actor, arg, ctx);
 
     // The intention here is to provide a metric that reports when an agent has stayed in one location for a long
@@ -92,6 +103,13 @@ public:
 
     // Update tracking for this agent
     actor.prev_location = actor.location;
+
+    // Consume resources on success.
+    if (success) {
+      for (auto& [rid, amount] : _consumed_resources) {
+        actor.inventory.update(rid, -static_cast<InventoryDelta>(amount));
+      }
+    }
 
     // Track success/failure
     if (success) {
@@ -125,6 +143,8 @@ protected:
 
   std::string _action_name;
   std::vector<Action> _actions;
+  std::unordered_map<InventoryItem, InventoryQuantity> _required_resources;
+  std::unordered_map<InventoryItem, InventoryQuantity> _consumed_resources;
 };
 
 // Implement Action::handle() inline after ActionHandler is fully defined

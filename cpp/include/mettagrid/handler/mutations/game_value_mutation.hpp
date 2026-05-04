@@ -19,7 +19,10 @@ public:
   explicit GameValueMutation(const GameValueMutationConfig& config) : _config(config) {}
 
   void apply(HandlerContext& ctx) override {
-    float delta = ctx.resolve_game_value(_config.source, _config.target);
+    // Resolve source in the original context: Scope::AGENT must still read
+    // from the bumper, Scope::TARGET from the target. Swapping actor to
+    // target here would silently zero out any AGENT-scope subexpression.
+    float delta = ::resolve_game_value(_config.source, ctx).read();
     HandlerContext value_ctx = ctx;
     value_ctx.actor = ctx.resolve(_config.target);
     ResolvedGameValue target_value = resolve_game_value(_config.value, value_ctx);

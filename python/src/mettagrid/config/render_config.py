@@ -29,6 +29,12 @@ class RenderStatusBarConfig(Config):
     max: int = Field(default=100, description="Max value used to normalize the bar")
     divisions: int = Field(default=20, ge=1, description="Number of panel segments")
     rank: int = Field(default=0, description="Sort order for status bars (ascending)")
+    color: str = Field(default="yellow", description="Bar fill color: yellow, red, blue, green, white")
+    max_resource: str = Field(default="", description="If set, read max from this inventory resource instead of static max")
+    alt_resource: str = Field(default="", description="If set and primary resource is 0, display this resource instead")
+    alt_color: str = Field(default="blue", description="Color to use when showing alt_resource")
+    suffix_resource: str = Field(default="", description="If set, show +N to the right of the bar (e.g., patch heal rate)")
+    icon_label: str = Field(default="", description="If set, show this atlas icon as the bar label instead of text")
 
     @model_validator(mode="after")
     def _default_short_name(self) -> "RenderStatusBarConfig":
@@ -78,17 +84,6 @@ class RenderConfig(Config):
     assets: dict[str, RenderAssetValue] = Field(
         default_factory=dict,
         description="Type-name to asset mapping, optionally with resource/tag conditions",
-    )
-    terrain_tile: Optional[str] = Field(
-        default=None,
-        description="Optional terrain tile path (relative to mettascope data root) for splat background rendering",
-    )
-    stamp_assets: dict[str, str] = Field(
-        default_factory=dict,
-        description=(
-            "Optional object-type to splat-stamp atlas path mapping used by MettaScope terrain stamps "
-            "(e.g. {'wiring_station': 'amongus/terrain/stamp.among_us_wiring'})"
-        ),
     )
 
     @model_validator(mode="after")

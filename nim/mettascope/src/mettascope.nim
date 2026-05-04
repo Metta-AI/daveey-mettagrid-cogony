@@ -5,7 +5,7 @@ import
   mettascope/gamemode/[worldmap, minimap, gameplayer, camera, talk],
   mettascope/panelmode/[panes, footer, timeline, header,
     objectpanel, policyinfopanel, envpanel, vibespanel, scorepanel,
-    monologuepanel, talkpanel]
+    monologuepanel, talkpanel, coguepanel, targetpanel, teamspanel]
 import slappy except play
 
 when defined(emscripten):
@@ -187,9 +187,12 @@ proc createDefaultPanelLayout() =
   rootArea.areas[1].split(Vertical)
   rootArea.areas[1].split = 0.85
 
+  rootArea.areas[0].areas[0].addPanel("Cogue", drawCoguePanel)
+  rootArea.areas[0].areas[0].addPanel("Teams", drawTeamsPanel)
+  rootArea.areas[0].areas[0].addPanel("Target", drawTargetPanel)
   rootArea.areas[0].areas[0].addPanel("Object", drawObjectInfo)
-  rootArea.areas[0].areas[0].addPanel("Policy Info", drawPolicyInfo)
-  rootArea.areas[0].areas[0].addPanel("Environment", drawEnvironmentInfo)
+  rootArea.areas[0].areas[0].addPanel("Policy", drawPolicyInfo)
+  rootArea.areas[0].areas[0].addPanel("Env", drawEnvironmentInfo)
 
   rootArea.areas[1].areas[0].addPanel("Map", drawWorldMap)
   rootArea.areas[0].areas[1].addPanel("Minimap", drawMinimap)
@@ -209,28 +212,24 @@ proc findFirstLeafArea(area: Area): Area =
       return leaf
   return nil
 
-proc insertMissingMonologuePanel(area: Area) =
-  if getPanelByName(area, "Monologue") != nil:
-    return
+proc insertMissingPanels(area: Area, defaultArea: Area) =
+  ## Add any panels from defaultArea that are missing in area.
+  var allDefaults: seq[tuple[name: string, draw: PanelDraw, area: Area]] = @[]
+  proc collect(a: Area) =
+    for p in a.panels:
+      allDefaults.add((p.name, p.draw, a))
+    for sub in a.areas:
+      collect(sub)
+  collect(defaultArea)
 
-  let scorePanel = getPanelByName(area, "Score")
-  if scorePanel != nil and scorePanel.parentArea != nil:
-    var insertIndex = scorePanel.parentArea.panels.len
-    for idx, panel in scorePanel.parentArea.panels:
-      if panel == scorePanel:
-        insertIndex = idx + 1
-        break
-    scorePanel.parentArea.panels.insert(
-      Panel(name: "Monologue", parentArea: scorePanel.parentArea, draw: drawMonologuePanel),
-      insertIndex
-    )
-    echo "Added missing panel: Monologue"
-    return
-
-  let fallbackArea = findFirstLeafArea(area)
-  if fallbackArea != nil:
-    fallbackArea.panels.add(Panel(name: "Monologue", parentArea: fallbackArea, draw: drawMonologuePanel))
-    echo "Added missing panel: Monologue"
+  for def in allDefaults:
+    if getPanelByName(area, def.name) != nil:
+      continue
+    let fallback = findFirstLeafArea(area)
+    if fallback != nil:
+      fallback.panels.add(
+        Panel(name: def.name, parentArea: fallback, draw: def.draw))
+      echo "Added missing panel: ", def.name
 
 proc initPanels() =
   ## Initialize panels, loading layout from config if available.
@@ -254,7 +253,7 @@ proc initPanels() =
       rootArea = defaultArea
 
   if layoutLoaded:
-    insertMissingMonologuePanel(rootArea)
+    insertMissingPanels(rootArea, defaultArea)
 
 
 proc onFrame() =
@@ -276,6 +275,7 @@ proc onFrame() =
     drawHeader()
     drawTimeline(vec2(0, sk.size.y - 64 - 33), vec2(sk.size.x, 32))
     drawFooter(vec2(0, sk.size.y - 64), vec2(sk.size.x, 64))
+    handleVibeHotkeys()
     drawPanels()
   else:
     ## Game mode UI.
@@ -297,7 +297,20 @@ proc initMettascope*() {.measure.} =
     var currentConfig = loadConfig()
     currentConfig.windowWidth = window.size.x.int32
     currentConfig.windowHeight = window.size.y.int32
+    currentConfig.windowX = window.pos.x
+    currentConfig.windowY = window.pos.y
+    currentConfig.hasSavedWindowPos = true
     saveConfig(currentConfig)
+
+  window.onMove = proc() =
+    var currentConfig = loadConfig()
+    currentConfig.windowX = window.pos.x
+    currentConfig.windowY = window.pos.y
+    currentConfig.hasSavedWindowPos = true
+    saveConfig(currentConfig)
+
+  window.onCloseRequest = proc() =
+    saveUIState()
 
   window.onFileDrop = proc(fileName: string, fileData: string) =
     echo "File dropped: ", fileName, " (", fileData.len, " bytes)"
@@ -341,6 +354,7 @@ proc tickMettascope*() =
   pollEvents()
 
 proc closeMettascope*() =
+  saveUIState()
   slappyClose()
 
 proc main() =

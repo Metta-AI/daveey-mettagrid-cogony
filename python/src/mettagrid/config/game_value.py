@@ -22,11 +22,13 @@ class Scope(ConfigStrEnum):
 
     AGENT = "agent"
     GAME = "game"
+    TARGET = "target"
 
 
 _SCOPE_ALIASES: dict[str, Scope] = {
     "agent": Scope.AGENT,
     "game": Scope.GAME,
+    "target": Scope.TARGET,
 }
 
 
@@ -86,6 +88,22 @@ def val(x: int | float) -> ConstValue:
     return ConstValue(value=float(x))
 
 
+class RandomValue(GameValue):
+    """A value freshly sampled from the engine RNG as ``uniform_int[min_value, max_value]``
+    (inclusive on both ends) on each evaluation. Inventory resources are integer
+    counts, so the sampler is integer-valued; floats are reserved for stats.
+
+    For dynamic bounds, set ``min_source`` and/or ``max_source`` to a GameValue
+    expression. When set, the static ``min_value``/``max_value`` are used as
+    fallbacks only if the source is not provided.
+    """
+
+    min_value: int = 0
+    max_value: int = 1
+    min_source: "AnyGameValue | None" = None
+    max_source: "AnyGameValue | None" = None
+
+
 class QueryInventoryValue(GameValue):
     """Sum of a resource across objects matched by a query."""
 
@@ -136,16 +154,25 @@ class MinGameValue(GameValue):
     values: list["AnyGameValue"] = Field(min_length=1)
 
 
+class ExpGameValue(GameValue):
+    """base ^ exponent, where exponent is a runtime GameValue."""
+
+    base: float = 2.0
+    exponent: "AnyGameValue"
+
+
 AnyGameValue = Union[
     InventoryValue,
     StatValue,
     ConstValue,
+    RandomValue,
     QueryInventoryValue,
     QueryCountValue,
     SumGameValue,
     RatioGameValue,
     MaxGameValue,
     MinGameValue,
+    ExpGameValue,
 ]
 
 

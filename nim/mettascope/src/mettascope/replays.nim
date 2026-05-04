@@ -62,6 +62,12 @@ type
     max*: int
     divisions*: int
     rank*: int
+    color*: string
+    max_resource*: string
+    alt_resource*: string
+    alt_color*: string
+    suffix_resource*: string
+    icon_label*: string
 
   RenderAssetRule* = object
     asset*: string
@@ -78,8 +84,6 @@ type
     hud2*: RenderHudConfig
     agent_huds*: Table[string, RenderHudConfig]
     object_status*: Table[string, Table[string, RenderStatusBarConfig]]
-    terrain_tile*: string
-    stamp_assets*: Table[string, string]
 
   GameConfig* = object
     resourceNames*: seq[string]

@@ -102,6 +102,28 @@ proc computeJunctionCount(): int =
       junctionCount += 1
   return junctionCount
 
+proc computeCogCountForTeam(teamIdx: int): int =
+  ## Count living agents on the given team.
+  if replay.isNil:
+    return 0
+  var n = 0
+  for obj in replay.objects:
+    if obj.isAgent and obj.alive.at and
+        getEntityTeamIndex(obj) == teamIdx:
+      n += 1
+  return n
+
+proc computeJunctionCountForTeam(teamIdx: int): int =
+  ## Count living junctions aligned to the given team.
+  if replay.isNil:
+    return 0
+  var n = 0
+  for obj in replay.objects:
+    if normalizeTypeName(obj.typeName) == "junction" and
+        obj.alive.at and getEntityTeamIndex(obj) == teamIdx:
+      n += 1
+  return n
+
 proc drawIconScaled(
   name: string,
   pos: Vec2,
@@ -302,72 +324,6 @@ proc topLeftPanel() =
     clip = false
   )
 
-proc topRightPanel(winW: float32) =
-  ## Draw top-right panel with resource counts for all teams.
-  const
-    ColSpacing = 98.0f
-    IconSize = 48.0f
-    NumberBgWidth = 80.0f
-    IconRowHeight = 56.0f
-    DataRowHeight = 44.0f
-    NumResources = 4
-    ContentWidth = NumResources.float32 * ColSpacing
-    BorderLeft = 30
-    BorderRight = 30
-    BorderTop = 55
-    BorderBottom = 100
-    PadLeft = 20.0f
-    PadRight = 16.0f
-    PadTop = 0.0f
-    PadBottom = 8.0f
-
-  let
-    numTeams = getNumTeams()
-    contentHeight =
-      IconRowHeight + max(numTeams, 1).float32 * DataRowHeight
-    panelWidth =
-      BorderLeft.float32 + PadLeft +
-      ContentWidth + PadRight + BorderRight.float32
-    panelHeight =
-      BorderTop.float32 + PadTop +
-      contentHeight + PadBottom + BorderBottom.float32
-    trPos = vec2(winW - panelWidth, 0)
-  sk.draw9Patch(
-    "ui/panel_topright",
-    BorderTop, BorderRight, BorderBottom, BorderLeft,
-    trPos,
-    vec2(panelWidth, panelHeight)
-  )
-
-  if not replay.isNil:
-    let
-      globalResources = [
-        ("resources/carbon", "carbon"),
-        ("resources/oxygen", "oxygen"),
-        ("resources/germanium", "germanium"),
-        ("resources/silicon", "silicon"),
-      ]
-      contentX = trPos.x + BorderLeft.float32 + PadLeft
-
-    # Header row: icons centered over each column.
-    let iconY = trPos.y + BorderTop.float32 + PadTop
-    for i, (icon, name) in globalResources:
-      let x = contentX + i.float32 * ColSpacing +
-        (ColSpacing - IconSize) * 0.5f
-      drawIconScaled(icon, vec2(x, iconY), IconSize)
-
-    # Data rows: numbers only.
-    for teamIdx in 0 ..< numTeams:
-      for i, (icon, name) in globalResources:
-        let
-          x = contentX + i.float32 * ColSpacing +
-            (ColSpacing - NumberBgWidth) * 0.5f
-          y = iconY + IconRowHeight + teamIdx.float32 * DataRowHeight
-        resourceCell(
-          vec2(x, y), icon,
-          getGlobalResourceCount(teamIdx, name),
-          showIcon = false
-        )
 
 proc bottomBarStretch(winW: float32, winH: float32) =
   ## Draw the stretch bar between the two bottom panels.
@@ -558,7 +514,7 @@ proc bottomRightPanel(winW: float32, winH: float32) =
         availableVibes.add((vibeName, vibeId))
 
     let
-      gridW = GridCols.float32 * XStride - 34.0f  # no trailing spacing
+      gridW = GridCols.float32 * XStride - 34.0f
       gridH = GridRows.float32 * YStride - 39.0f
       gridOrigin = vec2(
         winW - GridXOff - gridW,
@@ -666,9 +622,8 @@ proc centerPanel(winW: float32, winH: float32) =
   if selected.isNil:
     return
 
-  let
-    bcSize = sk.getImageSize("ui/panel_center")
-    bcPos = vec2((winW - bcSize.x) / 2.0, winH - bcSize.y - 20)
+  let bcSize = sk.getImageSize("ui/panel_center")
+  let bcPos = vec2((winW - bcSize.x) / 2.0, winH - bcSize.y - 20)
   sk.drawImage("ui/panel_center", bcPos)
   var at = vec2(bcPos.x + 69, bcPos.y + 32)
 
@@ -688,17 +643,15 @@ proc centerPanel(winW: float32, winH: float32) =
     let resolvedAsset = replay.resolveRenderAsset(selected, step)
     let cogName = getCogName(selected.agentId)
     displayName =
-      if teamName.len > 0 and cogName.len > 0:
-        teamName & " " & cogName
-      elif teamName.len > 0:
-        teamName
-      elif cogName.len > 0:
+      if cogName.len > 0:
         cogName
       else:
         rig
     profileName =
       if resolvedAsset.len > 0 and ("profiles/" & resolvedAsset) in sk.atlas.entries:
         "profiles/" & resolvedAsset
+      elif rig == "agent":
+        "profiles/cog"
       else:
         "profiles/" & rig
   else:
@@ -719,8 +672,29 @@ proc centerPanel(winW: float32, winH: float32) =
       else:
         "profiles/" & normalized
 
-  # Draw entity display name and policy label.
+  # 1) Name (left) + heart/creds (right)
   discard sk.drawText("pixelated", displayName, at, Yellow, clip = false)
+  if isAgent:
+    const
+      HdrIconSz = 24.0f
+      HdrGap = 6.0f
+      HdrItemGap = 14.0f
+    var headerX = bcPos.x + 390.0f
+    let headerY = at.y
+    for hdrName in ["heart", "creds"]:
+      let hdrIcon = "resources/" & hdrName
+      if hdrIcon notin sk.atlas.entries:
+        continue
+      let
+        hdrVal = getInventoryItem(selected, hdrName)
+        label = $hdrVal
+        textW = sk.getTextSize(sk.textStyle, label).x
+      headerX -= textW
+      discard sk.drawText("pixelated", label,
+        vec2(headerX, headerY), Yellow, clip = false)
+      headerX -= HdrIconSz + HdrGap
+      drawIconScaled(hdrIcon, vec2(headerX, headerY - 3), HdrIconSz)
+      headerX -= HdrItemGap
   if isAgent:
     let policyLabel =
       if policyName.len > 20:
@@ -730,15 +704,15 @@ proc centerPanel(winW: float32, winH: float32) =
     discard sk.drawText(
       "pixelated",
       policyLabel,
-      at + vec2(0, 32),
+      at + vec2(0, 24),
       rgbx(255, 255, 255, 255),
       clip = false,
     )
 
-  # Draw agent stat bars or custom status display.
-  let useCustomStatus = replay.hasCustomStatus(selected)
+  # 2) Agent bars
+  var useCustomStatus = replay.hasCustomStatus(selected)
   if useCustomStatus:
-    discard drawCustomStatusBars(selected, bcPos + vec2(0, 32.0f))
+    discard drawCustomStatusBars(selected, bcPos + vec2(0, 20.0f))
   elif isAgent:
     let
       prevStep = max(0, step - 1)
@@ -750,12 +724,12 @@ proc centerPanel(winW: float32, winH: float32) =
       prevHud2 = getInventoryItem(selected, hud2Cfg.resource, prevStep)
       deltaHud1 = hud1 - prevHud1
       deltaHud2 = hud2 - prevHud2
-    drawStatBar(bcPos + vec2(69, 113), hud1Cfg.short_name, hud1, hud1Cfg.max, 10, deltaHud1)
-    drawStatBar(bcPos + vec2(69, 145), hud2Cfg.short_name, hud2, hud2Cfg.max, 20, deltaHud2)
+    drawStatBar(bcPos + vec2(69, 85), hud1Cfg.short_name, hud1, hud1Cfg.max, 10, deltaHud1)
+    drawStatBar(bcPos + vec2(69, 117), hud2Cfg.short_name, hud2, hud2Cfg.max, 20, deltaHud2)
 
-  # Draw inventory resources as inline wrapped icons for agents and buildings.
+  # 3) Object resources (inline, wrapped, no resource_bg) shared for agent/building.
   if useCustomStatus:
-    let cr = collectCustomResources(selected, bcPos + vec2(0, 32.0f))
+    let cr = collectCustomResources(selected, bcPos + vec2(0, 20.0f))
     resourcesToDraw = cr.resources
     at = cr.anchor
   else:
@@ -765,7 +739,7 @@ proc centerPanel(winW: float32, winH: float32) =
       let
         itemName = replay.itemNames[item.itemId]
         itemIcon = "resources/" & itemName
-      if itemName in @["hp", "energy", "solar", "scrambler"]:
+      if itemName in @["hp", "energy", "solar", "scrambler", "heart", "creds"]:
         continue
       if itemIcon notin sk.atlas.entries:
         continue
@@ -774,16 +748,16 @@ proc centerPanel(winW: float32, winH: float32) =
     at = vec2(
       bcPos.x + 59,
       if isAgent:
-        bcPos.y + 183
+        bcPos.y + 155
       else:
-        bcPos.y + 112
+        bcPos.y + 90
     )
   const
     ResourceMaxWidth = 300.0f
-    IconSize = 48.0f
-    IconTextGap = 8.0f
-    ItemGap = 16.0f
-    RowGap = 12.0f
+    IconSize = 22.0f
+    IconTextGap = 6.0f
+    ItemGap = 14.0f
+    RowGap = 14.0f
   var
     cursorX = 0.0f
     cursorY = 0.0f
@@ -810,15 +784,10 @@ proc centerPanel(winW: float32, winH: float32) =
     )
     cursorX += itemWidth + ItemGap
 
-  # Draw profile portrait with optional team color mask.
+  # 4) Profile
   if profileName in sk.atlas.entries:
-    let
-      profileMask = profileName & ".mask"
-      profileTeamIdx = getEntityTeamIndex(selected)
-    if profileTeamIdx >= 0 and profileMask in sk.atlas.entries:
-      sk.drawImage(profileName, profilePos, getTeamColor(profileTeamIdx), profileMask)
-    else:
-      sk.drawImage(profileName, profilePos)
+    sk.drawImage(profileName, profilePos)
+
 
 proc bottomLeftMinimap(winH: float32) =
   ## Draw minimap inside the bottom-left panel.
@@ -852,6 +821,7 @@ proc bottomLeftMinimap(winH: float32) =
   drawMinimap(mmZoom)
   restoreTransform()
 
+
 proc drawTimelineSlider*(value: var float32, minVal: float32, maxVal: float32, label: string = "") =
   ## Draw a mettascope timeline slider.
   ## Similar to the slider in silky but customized for mettascope.
@@ -859,7 +829,11 @@ proc drawTimelineSlider*(value: var float32, minVal: float32, maxVal: float32, l
     minF = minVal
     maxF = maxVal
     range = maxF - minF
+
+  let
     clampedValue = clamp(value, minF, maxF)
+
+  let
     baseHandleSize = sk.getImageSize("scrubber.handle")
     buttonHandleSize = sk.getImageSize("button.9patch")
     labelSize = if label.len > 0: sk.getTextSize(sk.textStyle, label) else: vec2(0, 0)
@@ -885,8 +859,8 @@ proc drawTimelineSlider*(value: var float32, minVal: float32, maxVal: float32, l
     travel = max(0f, trackEnd - trackStart)
     travelSafe = if travel <= 0: 1f else: travel
 
+  let norm = if range == 0: 0f else: clamp((clampedValue - minF) / range, 0f, 1f)
   let
-    norm = if range == 0: 0f else: clamp((clampedValue - minF) / range, 0f, 1f)
     handlePos = vec2(trackStart + norm * travel - handleSize.x * 0.5, controlRect.y + (height - handleSize.y) * 0.5)
     handleRect = bumpy.rect(handlePos, handleSize)
 
@@ -906,10 +880,10 @@ proc drawTimelineSlider*(value: var float32, minVal: float32, maxVal: float32, l
       value = minF + t * range
       playSound("UIscrub3.wav")
 
+  let displayValue = clamp(value, minF, maxF)
+  let norm2 = if range == 0: 0f else: clamp((displayValue - minF) / range, 0f, 1f)
+  let handlePos2 = vec2(trackStart + norm2 * travel - handleSize.x * 0.5, controlRect.y + (height - handleSize.y) * 0.5)
   let
-    displayValue = clamp(value, minF, maxF)
-    norm2 = if range == 0: 0f else: clamp((displayValue - minF) / range, 0f, 1f)
-    handlePos2 = vec2(trackStart + norm2 * travel - handleSize.x * 0.5, controlRect.y + (height - handleSize.y) * 0.5)
     sliderPos = handlePos2 - vec2(32, 24)
     sliderSize = sk.getImageSize("ui/timeslider")
     labelPaddingX = 10.0f
@@ -980,7 +954,6 @@ proc drawGameWorld*() =
     adjustPanelForResize(worldMapZoomInfo)
 
   topLeftPanel()
-  topRightPanel(winW)
   bottomBarStretch(winW, winH)
   bottomLeftPanel(winH)
   bottomRightPanel(winW, winH)

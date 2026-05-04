@@ -18,6 +18,20 @@ else:
 from mettagrid.config.game_value import AnyGameValue
 from mettagrid.config.mutation.attack_mutation import AttackMutation
 from mettagrid.config.mutation.change_vibe_mutation import ChangeVibeMutation, changeTargetVibe
+from mettagrid.config.mutation.cogony_mutations import (
+    CogonyAttackMutation,
+    CogonyCogRebootMutation,
+    CogonyExtractorRebootMutation,
+    CogonyHealMutation,
+    CogonyHubIncomeMutation,
+    CogonyJunctionRebootMutation,
+    CogonyLootMutation,
+    CogonyMarketMutation,
+    CogonyStakeMutation,
+    CogonyJumpMutation,
+    CogonyTrapDropMutation,
+    CogonyTrapTriggerMutation,
+)
 from mettagrid.config.mutation.clear_inventory_mutation import ClearInventoryMutation
 from mettagrid.config.mutation.game_value_mutation import SetGameValueMutation
 from mettagrid.config.mutation.mutation import EntityTarget, Mutation
@@ -28,7 +42,6 @@ from mettagrid.config.mutation.query_inventory_mutation import (
     queryDeposit,
     queryWithdraw,
 )
-from mettagrid.config.mutation.query_place_adjacent_mutation import QueryPlaceAdjacentMutation, queryPlaceAdjacent
 from mettagrid.config.mutation.raycast_spawn_mutation import RaycastSpawnMutation
 from mettagrid.config.mutation.recompute_materialized_query_mutation import (
     RecomputeMaterializedQueryMutation,
@@ -78,7 +91,6 @@ AnyMutation = Annotated[
         Annotated[RemoveTagMutation, Tag("remove_tag")],
         Annotated[RemoveTagsWithPrefixMutation, Tag("remove_tags_with_prefix")],
         Annotated[SetGameValueMutation, Tag("set_game_value")],
-        Annotated[QueryPlaceAdjacentMutation, Tag("query_place_adjacent")],
         Annotated[RecomputeMaterializedQueryMutation, Tag("recompute_materialized_query")],
         Annotated[QueryInventoryMutation, Tag("query_inventory")],
         Annotated[RelocateMutation, Tag("relocate")],
@@ -89,6 +101,18 @@ AnyMutation = Annotated[
         Annotated[ChangeVibeMutation, Tag("change_vibe")],
         Annotated[RaycastSpawnMutation, Tag("raycast_spawn")],
         Annotated[PushObjectMutation, Tag("push_object")],
+        Annotated[CogonyAttackMutation, Tag("cogony_attack")],
+        Annotated[CogonyCogRebootMutation, Tag("cogony_cog_reboot")],
+        Annotated[CogonyExtractorRebootMutation, Tag("cogony_extractor_reboot")],
+        Annotated[CogonyJunctionRebootMutation, Tag("cogony_junction_reboot")],
+        Annotated[CogonyLootMutation, Tag("cogony_loot")],
+        Annotated[CogonyHealMutation, Tag("cogony_heal")],
+        Annotated[CogonyMarketMutation, Tag("cogony_market")],
+        Annotated[CogonyStakeMutation, Tag("cogony_stake")],
+        Annotated[CogonyHubIncomeMutation, Tag("cogony_hub_income")],
+        Annotated[CogonyTrapDropMutation, Tag("cogony_trap_drop")],
+        Annotated[CogonyTrapTriggerMutation, Tag("cogony_trap_trigger")],
+        Annotated[CogonyJumpMutation, Tag("cogony_jump")],
     ],
     Discriminator("mutation_type"),
 ]
@@ -110,7 +134,6 @@ _mutation_namespace = {
     "RemoveTagMutation": RemoveTagMutation,
     "RemoveTagsWithPrefixMutation": RemoveTagsWithPrefixMutation,
     "SetGameValueMutation": SetGameValueMutation,
-    "QueryPlaceAdjacentMutation": QueryPlaceAdjacentMutation,
     "RecomputeMaterializedQueryMutation": RecomputeMaterializedQueryMutation,
     "QueryInventoryMutation": QueryInventoryMutation,
     "RelocateMutation": RelocateMutation,
@@ -124,7 +147,6 @@ _mutation_namespace = {
 }
 AttackMutation.model_rebuild(_types_namespace=_mutation_namespace)
 SetGameValueMutation.model_rebuild(_types_namespace=_mutation_namespace)
-QueryPlaceAdjacentMutation.model_rebuild(_types_namespace=_mutation_namespace)
 RecomputeMaterializedQueryMutation.model_rebuild(_types_namespace=_mutation_namespace)
 QueryInventoryMutation.model_rebuild(_types_namespace=_mutation_namespace)
 # RaycastSpawnMutation references AnyFilter — rebuild after filter module is loaded.
@@ -146,7 +168,6 @@ __all__ = [
     "RemoveTagMutation",
     "RemoveTagsWithPrefixMutation",
     "SetGameValueMutation",
-    "QueryPlaceAdjacentMutation",
     "RecomputeMaterializedQueryMutation",
     "QueryInventoryMutation",
     "RelocateMutation",
@@ -175,7 +196,6 @@ __all__ = [
     "queryDeposit",
     "queryWithdraw",
     "queryDelta",
-    "queryPlaceAdjacent",
     "recomputeMaterializedQuery",
     "changeTargetVibe",
 ]
