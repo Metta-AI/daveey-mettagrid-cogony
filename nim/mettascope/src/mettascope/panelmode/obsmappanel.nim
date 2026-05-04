@@ -1,7 +1,7 @@
 ## ObsMap panel: graphical minimap from actual observation tokens.
 import
   std/[strutils, strformat, math, json, tables],
-  vmath, chroma, silky, windy,
+  vmath, bumpy, chroma, silky, windy,
   ../common, ../replays
 
 const
@@ -21,6 +21,7 @@ const
   TrapC = rgbx(231, 76, 60, 255)
   HeartC = rgbx(220, 50, 80, 255)
   UnknownC = rgbx(100, 100, 100, 255)
+  SelectBorder = rgbx(255, 255, 255, 200)
   CircleR = 6.5f
 
 proc typeColor(typeName: string): ColorRGBX =
@@ -38,7 +39,7 @@ proc typeColor(typeName: string): ColorRGBX =
 
 proc drawObsMapPanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
-  ## Render minimap from actual observation tokens.
+  ## Render minimap from actual obs tokens. Click to select.
   frame(frameId, contentPos, contentSize):
     if replay.isNil or selected.isNil or
         not selected.isAgent:
@@ -55,7 +56,7 @@ proc drawObsMapPanel*(panel: Panel, frameId: string,
       ox = sk.at.x + (availW - mapSz) * 0.5f
       oy = sk.at.y
 
-    # Parse obs_grid from policy_infos if available.
+    # Parse obs_grid from policy_infos.
     type CellData = object
       typeName: string
       color: ColorRGBX
@@ -83,11 +84,10 @@ proc drawObsMapPanel*(panel: Panel, frameId: string,
                 if s.startsWith("type:"):
                   tn = s[5 .. ^1]
                   break
-          let color = typeColor(tn)
           cells[(dr, dc)] = CellData(
-            typeName: tn, color: color)
+            typeName: tn, color: typeColor(tn))
 
-    # Draw grid.
+    # Draw grid + handle clicks.
     let gap = max(1.0f, cellSz * 0.08f)
     for r in 0 ..< Side:
       for c in 0 ..< Side:
@@ -118,6 +118,26 @@ proc drawObsMapPanel*(panel: Panel, frameId: string,
               vec2(px + gap, py + gap),
               vec2(cellSz - gap * 2,
                 cellSz - gap * 2), cell.color)
+        # Click detection.
+        let cellRect = Rect(
+          x: px, y: py, w: cellSz, h: cellSz)
+        if sk.mouseHover(window, cellRect) and
+            window.buttonReleased[MouseLeft]:
+          selectedObsCell = (dr: dr, dc: dc)
+          hasSelectedObsCell = true
+        # Selection highlight.
+        if hasSelectedObsCell and
+            selectedObsCell.dr == dr and
+            selectedObsCell.dc == dc:
+          let b = 1.0f
+          sk.drawRect(vec2(px, py),
+            vec2(cellSz, b), SelectBorder)
+          sk.drawRect(vec2(px, py + cellSz - b),
+            vec2(cellSz, b), SelectBorder)
+          sk.drawRect(vec2(px, py),
+            vec2(b, cellSz), SelectBorder)
+          sk.drawRect(vec2(px + cellSz - b, py),
+            vec2(b, cellSz), SelectBorder)
 
     # Agent marker in center.
     let
@@ -130,10 +150,22 @@ proc drawObsMapPanel*(panel: Panel, frameId: string,
 
     sk.advance(vec2(0, mapSz + 4))
     let ap = selected.location.at
-    let src =
-      if hasObsGrid: "tokens"
-      else: "no data"
-    discard sk.drawText(sk.textStyle,
-      fmt"({ap.x},{ap.y}) [{src}]",
-      sk.at, rgbx(140, 140, 140, 255), clip = false)
+    if hasSelectedObsCell:
+      let key = (r: selectedObsCell.dr,
+        c: selectedObsCell.dc)
+      if key in cells:
+        discard sk.drawText(sk.textStyle,
+          fmt"({selectedObsCell.dr:+d},{selectedObsCell.dc:+d}) {cells[key].typeName}",
+          sk.at, rgbx(200, 200, 200, 255),
+          clip = false)
+      else:
+        discard sk.drawText(sk.textStyle,
+          fmt"({selectedObsCell.dr:+d},{selectedObsCell.dc:+d}) empty",
+          sk.at, rgbx(140, 140, 140, 255),
+          clip = false)
+    else:
+      discard sk.drawText(sk.textStyle,
+        fmt"({ap.x},{ap.y})",
+        sk.at, rgbx(140, 140, 140, 255),
+        clip = false)
     sk.advance(vec2(0, 14))

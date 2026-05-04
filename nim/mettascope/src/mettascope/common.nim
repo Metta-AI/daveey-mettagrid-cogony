@@ -176,6 +176,8 @@ type
 var
   requestActions*: seq[ActionRequest]
   selectedPolicy*: string = "noop"
+  selectedObsCell*: tuple[dr, dc: int] = (0, 0)
+  hasSelectedObsCell*: bool = false
 
 var
   ## Path queue for each agent. Maps agentId to a sequence of path actions.
