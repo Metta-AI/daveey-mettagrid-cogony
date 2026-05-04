@@ -6,7 +6,7 @@ import
   ../common, ../replays, ../dropdown, ../actions
 
 var policyDrop = DropState()
-let policyOptions = @["noop", "random", "baseline"]
+let policyOptions = @["noop", "random", "baseline", "toolsy"]
 
 proc parseRelativeTarget(value: JsonNode): Option[IVec2] =
   ## Parse a relative target offset from JSON.
