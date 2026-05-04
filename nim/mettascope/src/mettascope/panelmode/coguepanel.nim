@@ -3,7 +3,7 @@
 import
   std/[strutils, strformat],
   vmath, chroma, silky, windy,
-  ../common, ../replays, ../cognames
+  ../common, ../replays, ../cognames, ../actions
 
 proc getInv*(entity: Entity, name: string, atStep: int = step): int =
   ## Get inventory value for a resource by name.
@@ -333,10 +333,27 @@ proc drawEntityStats*(entity: Entity) =
   else:
     drawGenericView(entity)
 
+const PolicyNames = ["noop", "random", "baseline"]
+
+proc drawPolicySelector() =
+  ## Draw policy selector as a row of buttons.
+  text("Policy")
+  group(vec2(4, 2), LeftToRight):
+    for name in PolicyNames:
+      let active = selectedPolicy == name
+      let label =
+        if active: "[" & name & "]"
+        else: name
+      button(label, not active):
+        selectedPolicy = name
+        sendAction(0, "__policy__:" & name)
+  sk.advance(vec2(0, 4))
+
 proc drawCoguePanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
   ## Draw the Cogue panel for the selected entity.
   frame(frameId, contentPos, contentSize):
+    drawPolicySelector()
     if replay.isNil or selected.isNil:
       text("No object selected")
       return

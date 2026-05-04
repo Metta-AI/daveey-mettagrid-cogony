@@ -175,6 +175,7 @@ type
 
 var
   requestActions*: seq[ActionRequest]
+  selectedPolicy*: string = "noop"
 
 var
   ## Path queue for each agent. Maps agentId to a sequence of path actions.

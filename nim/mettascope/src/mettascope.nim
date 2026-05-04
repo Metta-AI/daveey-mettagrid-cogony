@@ -5,7 +5,8 @@ import
   mettascope/gamemode/[worldmap, minimap, gameplayer, camera, talk],
   mettascope/panelmode/[panes, footer, timeline, header,
     objectpanel, policyinfopanel, envpanel, vibespanel, scorepanel,
-    monologuepanel, talkpanel, coguepanel, targetpanel, teamspanel]
+    monologuepanel, talkpanel, coguepanel, targetpanel, teamspanel,
+    obspanel]
 import slappy except play
 
 when defined(emscripten):
@@ -188,6 +189,7 @@ proc createDefaultPanelLayout() =
   rootArea.areas[1].split = 0.85
 
   rootArea.areas[0].areas[0].addPanel("Cogue", drawCoguePanel)
+  rootArea.areas[0].areas[0].addPanel("Obs", drawObsPanel)
   rootArea.areas[0].areas[0].addPanel("Teams", drawTeamsPanel)
   rootArea.areas[0].areas[0].addPanel("Target", drawTargetPanel)
   rootArea.areas[0].areas[0].addPanel("Object", drawObjectInfo)
