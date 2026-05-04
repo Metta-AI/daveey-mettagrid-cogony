@@ -5,38 +5,41 @@ import
   ../common, ../replays
 
 const
-  Separator = rgbx(60, 60, 60, 255)
-  Prompt = rgbx(120, 160, 200, 255)
-  Response = rgbx(180, 220, 160, 255)
-  ToolCall = rgbx(220, 180, 100, 255)
-  Result = rgbx(160, 140, 200, 255)
-  Default = rgbx(170, 170, 170, 255)
-  DimLine = rgbx(100, 100, 100, 255)
-  LineH = 13.0f
+  SepColor = rgbx(50, 50, 50, 255)
+  HeaderColor = rgbx(220, 180, 100, 255)
+  UserColor = rgbx(120, 170, 220, 255)
+  AssistColor = rgbx(160, 220, 140, 255)
+  ToolColor = rgbx(240, 190, 80, 255)
+  ResultColor = rgbx(170, 140, 210, 255)
+  SystemColor = rgbx(100, 100, 100, 255)
+  DefaultColor = rgbx(180, 180, 180, 255)
+  Font = "Default"
+  LineH = 18.0f
 
 proc lineColor(line: string): ColorRGBX =
-  ## Pick color based on line content.
-  if line.startsWith("===") or
-      line.startsWith("───"):
-    return Separator
-  if line.startsWith("LLM CALL"):
-    return ToolCall
-  if line.startsWith("RESPONSE"):
-    return Response
+  ## Pick color based on line prefix.
+  if line.startsWith("═") or
+      line.startsWith("─"):
+    return SepColor
+  if line.startsWith("LLM CALL") or
+      line.startsWith("RESPONSE"):
+    return HeaderColor
   if line.startsWith("TOOL"):
-    return ToolCall
+    return ToolColor
+  if line.startsWith("SYSTEM"):
+    return SystemColor
   if line.startsWith("  user:"):
-    return Prompt
+    return UserColor
   if line.startsWith("  assistant:"):
-    return Response
+    return AssistColor
   if "CALL " in line:
-    return ToolCall
+    return ToolColor
   if "RESULT " in line:
-    return Result
+    return ResultColor
   if line.startsWith("  text:") or
       line.startsWith("  tool:"):
-    return Response
-  return Default
+    return AssistColor
+  return DefaultColor
 
 proc drawLlmPanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
@@ -50,6 +53,29 @@ proc drawLlmPanel*(panel: Panel, frameId: string,
     if pinfo.isNil or pinfo.kind != JObject:
       text("(no policy_infos)")
       return
+
+    let maxW = contentSize.x - 8
+    let charsPerLine = max(20, int(maxW / 9.0f))
+
+    # Show system prompt if available.
+    let sysNode = pinfo.getOrDefault("llm_system")
+    if not sysNode.isNil and sysNode.kind == JString:
+      let sys = sysNode.getStr
+      if sys.len > 0:
+        discard sk.drawText(Font, "SYSTEM PROMPT",
+          sk.at, SystemColor, clip = false)
+        sk.advance(vec2(0, LineH))
+        # Wrap and render.
+        var i = 0
+        while i < sys.len:
+          let end_idx = min(i + charsPerLine, sys.len)
+          let chunk = sys[i ..< end_idx]
+          discard sk.drawText(Font, "  " & chunk,
+            sk.at, SystemColor, clip = false)
+          sk.advance(vec2(0, LineH))
+          i = end_idx
+        sk.advance(vec2(0, 4))
+
     let logNode = pinfo.getOrDefault("llm_log")
     if logNode.isNil or logNode.kind != JString:
       text("(no llm_log)")
@@ -59,11 +85,21 @@ proc drawLlmPanel*(panel: Panel, frameId: string,
       text("(empty log)")
       return
     let lines = logText.split('\n')
-    # Render bottom-up (newest at bottom, scroll shows latest).
     for line in lines:
       if line.len == 0:
         continue
       let color = lineColor(line)
-      discard sk.drawText(sk.textStyle, line,
-        sk.at, color, clip = false)
-      sk.advance(vec2(0, LineH))
+      # Wrap long lines.
+      if line.len <= charsPerLine:
+        discard sk.drawText(Font, line,
+          sk.at, color, clip = false)
+        sk.advance(vec2(0, LineH))
+      else:
+        var i = 0
+        while i < line.len:
+          let end_idx = min(i + charsPerLine, line.len)
+          let chunk = line[i ..< end_idx]
+          discard sk.drawText(Font, chunk,
+            sk.at, color, clip = false)
+          sk.advance(vec2(0, LineH))
+          i = end_idx
