@@ -13,13 +13,13 @@ const
   ResultColor = rgbx(170, 140, 210, 255)
   SystemColor = rgbx(100, 100, 100, 255)
   DefaultColor = rgbx(180, 180, 180, 255)
-  Font = "Default"
-  LineH = 18.0f
+  Font = "H1"
+  LineH = 34.0f
 
 proc lineColor(line: string): ColorRGBX =
   ## Pick color based on line prefix.
-  if line.startsWith("═") or
-      line.startsWith("─"):
+  if line.startsWith("===") or
+      line.startsWith("---"):
     return SepColor
   if line.startsWith("LLM CALL") or
       line.startsWith("RESPONSE"):
@@ -55,7 +55,7 @@ proc drawLlmPanel*(panel: Panel, frameId: string,
       return
 
     let maxW = contentSize.x - 8
-    let charsPerLine = max(20, int(maxW / 9.0f))
+    let charsPerLine = max(20, int(maxW / 16.0f))
 
     # Show system prompt if available.
     let sysNode = pinfo.getOrDefault("llm_system")
