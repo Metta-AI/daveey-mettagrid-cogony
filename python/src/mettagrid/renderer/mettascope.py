@@ -88,7 +88,7 @@ class MettascopeRenderer(Renderer):
         # mettascope.init requires data_dir, replay, and autostart arguments
         json_str = json.dumps(initial_replay, allow_nan=False)
         try:
-            self.response = self._mettascope.init(self._data_dir, self._version, json_str, self._autostart)
+            self.response = self._mettascope.init(self._data_dir, json_str, self._autostart)
         except KeyboardInterrupt:
             logger.info("Interrupt received during mettascope init; ending episode.")
             self._sim.end_episode()

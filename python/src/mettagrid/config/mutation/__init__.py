@@ -78,6 +78,7 @@ from mettagrid.config.mutation.tag_mutation import (
     removeTagPrefix,
 )
 from mettagrid.config.mutation.use_target_mutation import UseTargetMutation, useTarget
+from mettagrid.config.mutation.query_place_adjacent_mutation import QueryPlaceAdjacentMutation, queryPlaceAdjacent
 from mettagrid.config.query import AnyQuery, ClosureQuery, MaterializedQuery, Query
 
 AnyMutation = Annotated[
@@ -101,6 +102,7 @@ AnyMutation = Annotated[
         Annotated[ChangeVibeMutation, Tag("change_vibe")],
         Annotated[RaycastSpawnMutation, Tag("raycast_spawn")],
         Annotated[PushObjectMutation, Tag("push_object")],
+        Annotated[QueryPlaceAdjacentMutation, Tag("query_place_adjacent")],
         Annotated[CogonyAttackMutation, Tag("cogony_attack")],
         Annotated[CogonyCogRebootMutation, Tag("cogony_cog_reboot")],
         Annotated[CogonyExtractorRebootMutation, Tag("cogony_extractor_reboot")],
