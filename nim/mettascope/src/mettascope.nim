@@ -6,7 +6,7 @@ import
   mettascope/panelmode/[panes, footer, timeline, header,
     objectpanel, policyinfopanel, envpanel, vibespanel, scorepanel,
     monologuepanel, talkpanel, coguepanel, targetpanel, teamspanel,
-    obspanel]
+    obspanel, obsmappanel]
 import slappy except play
 
 when defined(emscripten):
@@ -198,6 +198,7 @@ proc createDefaultPanelLayout() =
 
   rootArea.areas[1].areas[0].addPanel("Map", drawWorldMap)
   rootArea.areas[0].areas[1].addPanel("Minimap", drawMinimap)
+  rootArea.areas[0].areas[1].addPanel("ObsMap", drawObsMapPanel)
 
   rootArea.areas[1].areas[1].addPanel("Vibes", drawVibes)
   rootArea.areas[1].areas[1].addPanel("Talk", drawTalkPanel)
