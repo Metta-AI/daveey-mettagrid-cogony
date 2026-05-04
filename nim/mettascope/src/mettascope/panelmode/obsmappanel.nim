@@ -1,112 +1,123 @@
-## ObsMap panel: graphical minimap of the selected agent's observation.
+## ObsMap panel: graphical minimap from actual observation tokens.
 import
-  std/[strutils, strformat],
+  std/[strutils, strformat, math, json, tables],
   vmath, chroma, silky, windy,
   ../common, ../replays
 
 const
-  VisionR = 7
+  VisionR = 6
   Side = VisionR * 2 + 1
-  Empty = rgbx(20, 20, 20, 255)
-  Wall = rgbx(60, 60, 60, 255)
-  Agent = rgbx(80, 200, 240, 255)
-  OtherAgent = rgbx(200, 200, 200, 255)
-  Extractor = rgbx(46, 204, 113, 255)
-  ExtractorDead = rgbx(80, 120, 80, 255)
-  Junction = rgbx(160, 100, 220, 255)
-  Hub = rgbx(241, 196, 15, 255)
-  Market = rgbx(230, 150, 50, 255)
-  Station = rgbx(52, 152, 219, 255)
-  Trap = rgbx(231, 76, 60, 255)
-  Heart = rgbx(220, 50, 80, 255)
-  Unknown = rgbx(100, 100, 100, 255)
+  OutOfRange = rgbx(10, 10, 10, 255)
+  InRange = rgbx(22, 22, 28, 255)
+  WallColor = rgbx(55, 55, 55, 255)
+  AgentColor = rgbx(80, 200, 240, 255)
+  OtherAgentC = rgbx(200, 200, 200, 255)
+  ExtractorC = rgbx(46, 204, 113, 255)
+  ExtractorDeadC = rgbx(80, 120, 80, 255)
+  JunctionC = rgbx(160, 100, 220, 255)
+  HubC = rgbx(241, 196, 15, 255)
+  MarketC = rgbx(230, 150, 50, 255)
+  StationC = rgbx(52, 152, 219, 255)
+  TrapC = rgbx(231, 76, 60, 255)
+  HeartC = rgbx(220, 50, 80, 255)
+  UnknownC = rgbx(100, 100, 100, 255)
+  CircleR = 6.5f
 
-template has(tn, sub: string): bool =
-  sub in tn
-
-proc entityColor(tn: string, coh: int): ColorRGBX =
-  ## Color for an entity on the minimap.
-  if tn.has("extractor"):
-    return if coh > 0: Extractor else: ExtractorDead
-  if tn.has("junction"): return Junction
-  if tn.has("hub"): return Hub
-  if tn.has("market"): return Market
-  if tn.has("_st") or tn.has("station"):
-    return Station
-  if tn.has("agent"): return OtherAgent
-  if tn.has("trap"): return Trap
-  if tn.has("heart"): return Heart
-  return Unknown
+proc typeColor(typeName: string): ColorRGBX =
+  ## Color from a type:xxx tag.
+  if "extractor" in typeName: return ExtractorC
+  if "junction" in typeName: return JunctionC
+  if "hub" in typeName: return HubC
+  if "market" in typeName: return MarketC
+  if "station" in typeName: return StationC
+  if "agent" in typeName: return OtherAgentC
+  if "trap" in typeName: return TrapC
+  if "heart" in typeName: return HeartC
+  if "wall" in typeName: return WallColor
+  return UnknownC
 
 proc drawObsMapPanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
-  ## Render a graphical minimap of the agent's FOV.
+  ## Render minimap from actual observation tokens.
   frame(frameId, contentPos, contentSize):
     if replay.isNil or selected.isNil or
         not selected.isAgent:
       text("Select an agent")
       return
+
     let
-      ap = selected.location.at
       availW = contentSize.x - 8
       availH = contentSize.y - 24
-      cellSz = min(availW / Side.float32,
-        availH / Side.float32).max(2.0f).min(16.0f)
-      mapW = cellSz * Side.float32
-      mapH = cellSz * Side.float32
-      ox = sk.at.x + (availW - mapW) * 0.5f
+      cellSz = min(
+        availW / Side.float32,
+        availH / Side.float32).max(3.0f).min(20.0f)
+      mapSz = cellSz * Side.float32
+      ox = sk.at.x + (availW - mapSz) * 0.5f
       oy = sk.at.y
 
-    # Background.
-    sk.drawRect(vec2(ox, oy), vec2(mapW, mapH), Empty)
-
-    # Gather entities into grid.
-    type Cell = object
-      kind: int  # 0=empty, 1=wall, 2=entity
+    # Parse obs_grid from policy_infos if available.
+    type CellData = object
+      typeName: string
       color: ColorRGBX
-    var grid: array[Side, array[Side, Cell]]
+    var cells: Table[tuple[r, c: int], CellData]
+    var hasObsGrid = false
 
-    for entity in replay.objects:
-      if not entity.alive.at:
-        continue
-      let
-        pos = entity.location.at
-        dr = pos.y - ap.y
-        dc = pos.x - ap.x
-      if abs(dr) > VisionR or abs(dc) > VisionR:
-        continue
-      if entity == selected:
-        continue
-      let
-        gr = dr + VisionR
-        gc = dc + VisionR
-        tn = normalizeTypeName(entity.typeName)
-      if tn == "wall":
-        grid[gr][gc] = Cell(kind: 1, color: Wall)
-      else:
-        var coh = 0
-        for item in entity.inventory.at:
-          if item.itemId < replay.itemNames.len and
-              replay.itemNames[item.itemId] == "coherence":
-            coh = item.count
-        grid[gr][gc] = Cell(kind: 2,
-          color: entityColor(tn, coh))
+    let pinfo = selected.policyInfos.at
+    if not pinfo.isNil and pinfo.kind == JObject:
+      let ogNode = pinfo.getOrDefault("obs_grid")
+      if not ogNode.isNil and ogNode.kind == JObject:
+        hasObsGrid = true
+        for key, val in ogNode:
+          let parts = key.split(",")
+          if parts.len != 2:
+            continue
+          let
+            dr = parseInt(parts[0].strip)
+            dc = parseInt(parts[1].strip)
+          var tn = ""
+          if val.kind == JObject:
+            let tags = val.getOrDefault("tags")
+            if not tags.isNil and tags.kind == JArray:
+              for tag in tags:
+                let s = tag.getStr
+                if s.startsWith("type:"):
+                  tn = s[5 .. ^1]
+                  break
+          let color = typeColor(tn)
+          cells[(dr, dc)] = CellData(
+            typeName: tn, color: color)
 
-    # Draw cells.
-    let gap = max(1.0f, cellSz * 0.1f)
+    # Draw grid.
+    let gap = max(1.0f, cellSz * 0.08f)
     for r in 0 ..< Side:
       for c in 0 ..< Side:
         let
           px = ox + c.float32 * cellSz
           py = oy + r.float32 * cellSz
-          cell = grid[r][c]
-        if cell.kind == 1:
-          sk.drawRect(vec2(px, py),
-            vec2(cellSz, cellSz), Wall)
-        elif cell.kind == 2:
-          sk.drawRect(vec2(px + gap, py + gap),
-            vec2(cellSz - gap * 2, cellSz - gap * 2),
-            cell.color)
+          dr = r - VisionR
+          dc = c - VisionR
+          dist = sqrt(
+            dr.float32 * dr.float32 +
+            dc.float32 * dc.float32)
+          inCircle = dist <= CircleR
+          bg =
+            if inCircle: InRange
+            else: OutOfRange
+        sk.drawRect(vec2(px, py),
+          vec2(cellSz, cellSz), bg)
+        if not inCircle:
+          continue
+        let key = (r: dr, c: dc)
+        if key in cells:
+          let cell = cells[key]
+          if "wall" in cell.typeName:
+            sk.drawRect(vec2(px, py),
+              vec2(cellSz, cellSz), WallColor)
+          else:
+            sk.drawRect(
+              vec2(px + gap, py + gap),
+              vec2(cellSz - gap * 2,
+                cellSz - gap * 2), cell.color)
 
     # Agent marker in center.
     let
@@ -114,10 +125,15 @@ proc drawObsMapPanel*(panel: Panel, frameId: string,
       cy = oy + VisionR.float32 * cellSz
       m = cellSz * 0.15f
     sk.drawRect(vec2(cx + m, cy + m),
-      vec2(cellSz - m * 2, cellSz - m * 2), Agent)
+      vec2(cellSz - m * 2, cellSz - m * 2),
+      AgentColor)
 
-    sk.advance(vec2(0, mapH + 4))
+    sk.advance(vec2(0, mapSz + 4))
+    let ap = selected.location.at
+    let src =
+      if hasObsGrid: "tokens"
+      else: "no data"
     discard sk.drawText(sk.textStyle,
-      fmt"({ap.x},{ap.y})",
+      fmt"({ap.x},{ap.y}) [{src}]",
       sk.at, rgbx(140, 140, 140, 255), clip = false)
     sk.advance(vec2(0, 14))
