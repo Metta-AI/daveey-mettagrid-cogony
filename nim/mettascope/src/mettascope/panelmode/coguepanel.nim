@@ -333,21 +333,19 @@ proc drawEntityStats*(entity: Entity) =
   else:
     drawGenericView(entity)
 
+import ../dropdown
+
 const PolicyNames = ["noop", "random", "baseline"]
 
+var policyDrop = DropState()
+
 proc drawPolicySelector() =
-  ## Draw policy selector as a row of buttons.
-  text("Policy")
-  group(vec2(4, 2), LeftToRight):
-    for name in PolicyNames:
-      let active = selectedPolicy == name
-      let label =
-        if active: "[" & name & "]"
-        else: name
-      button(label, not active):
-        selectedPolicy = name
-        sendAction(0, "__policy__:" & name)
-  sk.advance(vec2(0, 4))
+  ## Draw a dropdown for policy selection.
+  let picked = dropdown(policyDrop, selectedPolicy,
+    @["noop", "random", "baseline"])
+  if picked.len > 0:
+    selectedPolicy = picked
+    sendAction(0, "__policy__:" & picked)
 
 proc drawCoguePanel*(panel: Panel, frameId: string,
     contentPos: Vec2, contentSize: Vec2) =
