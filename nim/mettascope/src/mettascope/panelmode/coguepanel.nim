@@ -3,7 +3,7 @@
 import
   std/[strutils, strformat],
   vmath, chroma, silky, windy,
-  ../common, ../replays, ../cognames, ../actions
+  ../common, ../replays, ../cognames
 
 proc getInv*(entity: Entity, name: string, atStep: int = step): int =
   ## Get inventory value for a resource by name.
@@ -153,9 +153,7 @@ proc drawNodeView(entity: Entity) =
   ## Extractor / junction display.
   let level = getInv(entity, "level")
   text(fmt"{entity.typeName}")
-  colorBar("Level", level, 20, Yellow)
   drawCoherenceBar(entity, level * 20)
-  drawSubsystems(entity)
 
 proc drawMarketView(entity: Entity) =
   ## Market station display: prices, sold counts, creds collected.

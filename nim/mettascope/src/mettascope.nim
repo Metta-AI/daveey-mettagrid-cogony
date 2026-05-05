@@ -11,6 +11,7 @@ import slappy except play
 
 when defined(emscripten):
   import webby
+  import mettascope/multiplayer
 else:
   import std/parseopt
 
@@ -27,9 +28,23 @@ when isMainModule:
 
 when defined(emscripten):
   proc parseUrlParams() =
-    ## Parse URL parameters.
+    ## Parse URL parameters and start multiplayer when ws is present.
     let url = parseUrl(window.url)
-    commandLineReplay = url.query["replay"]
+    let wsParam = url.query["ws"]
+    if wsParam != "":
+      playMode = Realtime
+      play = false
+      mpConnect(wsParam)
+    elif url.path.contains("/wasm/"):
+      let
+        wsScheme = if url.scheme == "https": "wss" else: "ws"
+        host = url.hostname &
+          (if url.port != "": ":" & url.port else: "")
+      playMode = Realtime
+      play = false
+      mpConnect(wsScheme & "://" & host & "/ws")
+    else:
+      commandLineReplay = url.query["replay"]
 
 when not defined(emscripten):
   proc parseArgs() =
@@ -345,12 +360,16 @@ proc initMettascope*() {.measure.} =
   worldMapZoomInfo.scrollArea = Rect(x: 0, y: 0, w: 500, h: 500)
   worldMapZoomInfo.hasMouse = false
 
-  if playMode == Historical:
-    when defined(emscripten):
-      parseUrlParams()
-    else:
+  when defined(emscripten):
+    parseUrlParams()
+    if multiplayerActive:
+      common.replay = EmptyReplay
+    elif playMode == Historical:
+      replaySwitch(commandLineReplay)
+  else:
+    if playMode == Historical:
       parseArgs()
-    replaySwitch(commandLineReplay)
+      replaySwitch(commandLineReplay)
 
   slappyInit()
 
@@ -374,6 +393,11 @@ proc main() =
 
   while not window.closeRequested:
     tickMettascope()
+    when defined(emscripten):
+      if multiplayerActive:
+        mpSyncControls()
+        if requestPython:
+          mpSendActions()
 
   closeMettascope()
 

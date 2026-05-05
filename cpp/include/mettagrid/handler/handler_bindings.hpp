@@ -432,6 +432,8 @@ inline void bind_handler_config(py::module& m) {
       .def_readwrite("stake_id", &CogonyHubIncomeMutationConfig::stake_id)
       .def_readwrite("team_tag_id", &CogonyHubIncomeMutationConfig::team_tag_id)
       .def_readwrite("creds_per_junction", &CogonyHubIncomeMutationConfig::creds_per_junction)
+      .def_readwrite("creds_per_observatory", &CogonyHubIncomeMutationConfig::creds_per_observatory)
+      .def_readwrite("creds_per_datacenter", &CogonyHubIncomeMutationConfig::creds_per_datacenter)
       .def_readwrite("revenue_id", &CogonyHubIncomeMutationConfig::revenue_id)
       .def_readwrite("champion_pct", &CogonyHubIncomeMutationConfig::champion_pct);
 

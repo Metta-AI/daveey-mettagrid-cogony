@@ -20,7 +20,7 @@ type
     Invalid, North, East, South, West
 
   PipeNodeRole = enum
-    NoRole, Junction, Hub
+    NoRole, Junction, Hub, Observatory, Datacenter
 
   PipeNetworkKey = int
 
@@ -395,6 +395,10 @@ proc cachePipeNodeIds() =
     let normalized = normalizeTypeName(obj.typeName)
     if normalized == "junction":
       pipeNodeRole[obj.id] = Junction
+    elif normalized == "observatory":
+      pipeNodeRole[obj.id] = Observatory
+    elif normalized == "datacenter":
+      pipeNodeRole[obj.id] = Datacenter
     elif normalized == "hub":
       pipeNodeRole[obj.id] = Hub
 

@@ -238,6 +238,8 @@ struct CogonyHubIncomeMutationConfig {
   InventoryItem revenue_id = 0;
   int team_tag_id = -1;
   int creds_per_junction = 10;
+  int creds_per_observatory = 50;
+  int creds_per_datacenter = 100;
   int champion_pct = 30;
 };
 

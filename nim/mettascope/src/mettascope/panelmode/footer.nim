@@ -45,6 +45,7 @@ proc drawFooter*(pos, size: Vec2) =
         step += 1
         if step > replay.maxSteps - 1:
           requestPython = true
+          requestMultiplayerFrame = true
         step = clamp(step, 0, replay.maxSteps - 1)
         stepFloat = step.float32
         saveUIState()

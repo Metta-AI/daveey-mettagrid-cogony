@@ -14,14 +14,20 @@ public:
     auto* hub = ctx.target;
     if (!hub || !ctx.tag_index || !ctx.grid) return;
 
-    auto& junctions = ctx.tag_index->get_objects_with_tag(_config.team_tag_id);
+    auto& aligned = ctx.tag_index->get_objects_with_tag(_config.team_tag_id);
     int n_junctions = 0;
-    for (auto* obj : junctions) {
+    int n_observatories = 0;
+    int n_datacenters = 0;
+    for (auto* obj : aligned) {
       if (obj->type_name == "junction") n_junctions++;
+      else if (obj->type_name == "observatory") n_observatories++;
+      else if (obj->type_name == "datacenter") n_datacenters++;
     }
-    if (n_junctions == 0) return;
 
-    int income = n_junctions * _config.creds_per_junction;
+    int income = n_junctions * _config.creds_per_junction
+               + n_observatories * _config.creds_per_observatory
+               + n_datacenters * _config.creds_per_datacenter;
+    if (income == 0) return;
     int total_stake = static_cast<int>(hub->inventory.amount(_config.total_stake_id));
 
     // Set revenue display on hub (overwrite previous period).

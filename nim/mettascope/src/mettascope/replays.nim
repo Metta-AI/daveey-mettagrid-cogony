@@ -1459,7 +1459,7 @@ proc apply*(replay: Replay, step: int, objects: seq[ReplayEntity]) {.measure.} =
   for obj in objects:
     let index = obj.id - 1
     while index >= replay.objects.len:
-      replay.objects.add(Entity(id: obj.id))
+      replay.objects.add(Entity(id: replay.objects.len + 1))
 
     let entity = replay.objects[index]
     doAssert entity.id == obj.id, "Object id mismatch"
@@ -1549,7 +1549,8 @@ proc apply*(replay: Replay, step: int, objects: seq[ReplayEntity]) {.measure.} =
     for obj in replay.objects:
       if obj.typeName == agentTypeName:
         replay.agents.add(obj)
-    doAssert replay.agents.len == replay.numAgents, "Agents and numAgents mismatch"
+    if replay.agents.len > 0:
+      doAssert replay.agents.len == replay.numAgents, "Agents and numAgents mismatch"
 
   computeGainMap(replay)
 

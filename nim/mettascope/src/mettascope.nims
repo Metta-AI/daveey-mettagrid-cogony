@@ -38,7 +38,7 @@ if defined(emscripten):
     "passL",
     (
       " -o " & distDir / "mettascope.html" &
-      " --preload-file " & dataDir &
+      " --preload-file " & dataDir & "@packages/mettagrid/nim/mettascope/data" &
       " --shell-file " & shellFile &
       " -s ASYNCIFY" &
       " -s FETCH" &

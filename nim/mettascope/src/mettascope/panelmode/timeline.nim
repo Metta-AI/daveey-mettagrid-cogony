@@ -105,6 +105,7 @@ proc playControls*() =
     step += 1
     if playMode == Realtime and step >= replay.maxSteps:
       requestPython = true
+      requestMultiplayerFrame = true
       step = replay.maxSteps - 1
     step = clamp(step, 0, replay.maxSteps - 1)
     stepFloat = step.float32

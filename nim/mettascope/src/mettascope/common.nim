@@ -117,6 +117,7 @@ var
 
   ## Signals when we want to give control back to Python (DLL mode only).
   requestPython*: bool = false
+  requestMultiplayerFrame*: bool = false
 
   ## Force the next render() step to warp instead of smooth-interpolating.
   forceWarp*: bool = false
@@ -124,6 +125,10 @@ var
   # Command line arguments.
   commandLineReplay*: string = ""
   forcedGameMode*: GameMode = Auto
+
+  # Multiplayer state.
+  multiplayerActive* = false
+  multiplayerAgentId* = -1
 
   # Popup warning system.
   popupWarning*: string = ""

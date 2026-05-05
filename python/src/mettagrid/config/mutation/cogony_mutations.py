@@ -99,8 +99,10 @@ class CogonyHubIncomeMutation(Mutation):
     total_stake: str = Field(default="total_stake")
     stake: str = Field(description="Per-agent stake resource for this team")
     revenue: str = Field(default="revenue")
-    team_tag: str = Field(description="Team tag for counting aligned junctions")
+    team_tag: str = Field(description="Team tag for counting aligned nodes")
     creds_per_junction: int = Field(default=10)
+    creds_per_observatory: int = Field(default=50)
+    creds_per_datacenter: int = Field(default=100)
     champion_pct: int = Field(default=30)
 
 
