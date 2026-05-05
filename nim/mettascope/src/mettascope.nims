@@ -5,6 +5,7 @@ if defined(emscripten):
   --os:linux
   --cpu:wasm32
   --cc:clang
+  --threads:off
   when defined(windows):
     --clang.exe:emcc.bat
     --clang.linkerexe:emcc.bat
