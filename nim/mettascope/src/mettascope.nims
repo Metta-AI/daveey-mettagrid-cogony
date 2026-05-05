@@ -27,22 +27,28 @@ if defined(emscripten):
     rmDir("dist")
   mkDir("dist")
 
+  # Resolve paths relative to this .nims file's directory.
+  let msRoot = currentSourcePath().parentDir().parentDir()
+  let distDir = msRoot / "dist"
+  let dataDir = msRoot / "data"
+  let shellFile = msRoot / "src" / "mettascope" / "shell.html"
+
   switch(
     "passL",
-    """
-    -o packages/mettagrid/nim/mettascope/dist/mettascope.html
-    --preload-file packages/mettagrid/nim/mettascope/data
-    --shell-file packages/mettagrid/nim/mettascope/src/mettascope/shell.html
-    -s ASYNCIFY
-    -s FETCH
-    -s USE_WEBGL2=1
-    -s MAX_WEBGL_VERSION=2
-    -s MIN_WEBGL_VERSION=1
-    -s FULL_ES3=1
-    -s GL_ENABLE_GET_PROC_ADDRESS=1
-    -s ALLOW_MEMORY_GROWTH
-    --profiling
-    """.replace("\n", " ")
+    (
+      " -o " & distDir / "mettascope.html" &
+      " --preload-file " & dataDir &
+      " --shell-file " & shellFile &
+      " -s ASYNCIFY" &
+      " -s FETCH" &
+      " -s USE_WEBGL2=1" &
+      " -s MAX_WEBGL_VERSION=2" &
+      " -s MIN_WEBGL_VERSION=1" &
+      " -s FULL_ES3=1" &
+      " -s GL_ENABLE_GET_PROC_ADDRESS=1" &
+      " -s ALLOW_MEMORY_GROWTH" &
+      " --profiling"
+    )
   )
 
 when not defined(debug):
