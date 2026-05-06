@@ -15,6 +15,18 @@ proc getInv*(entity: Entity, name: string, atStep: int = step): int =
       return item.count
   return 0
 
+proc getTeamScopedInv*(entity: Entity, suffix: string): int =
+  ## Get the selected object's team-scoped Cogony stake resource by suffix.
+  if replay.isNil or entity.isNil:
+    return 0
+  for item in entity.inventory.at(step):
+    if item.itemId < 0 or item.itemId >= replay.itemNames.len:
+      continue
+    let name = replay.itemNames[item.itemId]
+    if name.endsWith("_" & suffix):
+      return item.count
+  return 0
+
 const
   BarH* = 14.0f
   BarW* = 160.0f
@@ -178,72 +190,33 @@ proc drawMarketView(entity: Entity) =
 
 
 proc drawHubView(entity: Entity) =
-  ## Hub display: stakes, revenue, reserves.
+  ## Hub display: team-scoped stake economics.
   text(fmt"{entity.typeName}")
   let
-    totalStake = getInv(entity, "total_stake")
-    stakeCost = getInv(entity, "stake_cost")
-    curveReserve = getInv(entity, "curve_reserve")
-    revenue = getInv(entity, "revenue")
-    creds = getInv(entity, "creds")
+    totalStake = getTeamScopedInv(entity, "total_stakes")
+    buyPrice = getTeamScopedInv(entity, "stake_buy_price")
+    sellPrice = getTeamScopedInv(entity, "stake_sell_price")
   discard sk.drawText(sk.textStyle,
-    fmt"Stakes: {totalStake}  Cost: {stakeCost}",
+    fmt"Stakes: {totalStake}",
     sk.at, Yellow, clip = false)
   sk.advance(vec2(0, BarH + 4))
   discard sk.drawText(sk.textStyle,
-    fmt"Revenue: {revenue}  Reserve: {curveReserve}",
+    fmt"Buy price: {buyPrice}  Sell price: {sellPrice}",
     sk.at, White, clip = false)
   sk.advance(vec2(0, BarH + 4))
-  discard sk.drawText(sk.textStyle,
-    fmt"Creds pool: {creds}",
-    sk.at, White, clip = false)
-  sk.advance(vec2(0, BarH + 4))
-
-proc findHub(): Entity =
-  ## Find the first hub object on the grid.
-  if replay.isNil:
-    return nil
-  for obj in replay.objects:
-    if not obj.isNil and "hub" in normalizeTypeName(obj.typeName):
-      if obj.alive.at:
-        return obj
-  return nil
 
 proc drawStakeStationView(entity: Entity, isBuy: bool) =
   ## Stake buy/sell station display.
   let label = if isBuy: "Stake Buy" else: "Stake Sell"
   text(fmt"{label} Station")
-
-  let hub = findHub()
-  if hub.isNil:
-    text("(no hub found)")
-    return
-
   let
-    totalStake = getInv(hub, "total_stake")
-    stakeCost = getInv(hub, "stake_cost")
-    k = 10
-    sellPrice = k * totalStake
-    buyPrice = stakeCost
+    suffix = if isBuy: "stake_buy_price" else: "stake_sell_price"
+    price = getTeamScopedInv(entity, suffix)
+    priceLabel = if isBuy: "Buy price" else: "Sell price"
+    priceColor = if isBuy: Green else: Red
   discard sk.drawText(sk.textStyle,
-    fmt"Total stakes: {totalStake}",
-    sk.at, Yellow, clip = false)
-  sk.advance(vec2(0, BarH + 4))
-  discard sk.drawText(sk.textStyle,
-    fmt"Buy price:  {buyPrice}",
-    sk.at, Green, clip = false)
-  sk.advance(vec2(0, BarH + 4))
-  discard sk.drawText(sk.textStyle,
-    fmt"Sell price: {sellPrice}",
-    sk.at, Red, clip = false)
-  sk.advance(vec2(0, BarH + 4))
-
-  let
-    curveReserve = getInv(hub, "curve_reserve")
-    creds = getInv(hub, "creds")
-  discard sk.drawText(sk.textStyle,
-    fmt"Reserve: {curveReserve}  Creds: {creds}",
-    sk.at, White, clip = false)
+    fmt"{priceLabel}: {price}",
+    sk.at, priceColor, clip = false)
   sk.advance(vec2(0, BarH + 4))
 
 proc drawGearStationView(entity: Entity) =

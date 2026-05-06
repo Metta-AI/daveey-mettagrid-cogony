@@ -1,9 +1,28 @@
 ## Custom HUD rendering for configurable status bars in the center panel.
 ## Used only when object_status is explicitly set in the render config.
 import
-  std/[tables],
+  std/[strutils, tables],
   vmath, silky, silky/atlas, chroma,
   ../[common, replays, colors]
+
+proc resourceIconName*(itemName: string): string =
+  ## Return the atlas resource name to use for inventory details.
+  if itemName.endsWith("_stake_buy_price") or
+      itemName.endsWith("_stake_sell_price"):
+    return "creds"
+  if itemName.endsWith("_total_stakes"):
+    return "star"
+  return itemName
+
+proc resourceIconPath*(itemName: string): string =
+  ## Return the atlas path for a resource, using Cogony aliases when needed.
+  let directIcon = "resources/" & itemName
+  if directIcon in sk.atlas.entries:
+    return directIcon
+  let aliasIcon = "resources/" & resourceIconName(itemName)
+  if aliasIcon in sk.atlas.entries:
+    return aliasIcon
+  return ""
 
 proc getInventoryItem(entity: Entity, itemName: string, atStep: int = step): int =
   ## Get the count of a named item in the entity's inventory at a given step.
@@ -347,14 +366,13 @@ proc collectCustomResources*(
     if item.count <= 0 or item.itemId < 0 or
         item.itemId >= replay.itemNames.len:
       continue
-    let
-      itemName = replay.itemNames[item.itemId]
-      itemIcon = "resources/" & itemName
+    let itemName = replay.itemNames[item.itemId]
     if itemName in @["hp", "energy", "solar", "heart", "creds"]:
       continue
     if itemName in statusResources:
       continue
-    if itemIcon notin sk.atlas.entries:
+    let itemIcon = resourceIconPath(itemName)
+    if itemIcon.len == 0:
       continue
     resources.add((icon: itemIcon, amount: item.count))
   let statusConfigs = replay.statusItems(selected)

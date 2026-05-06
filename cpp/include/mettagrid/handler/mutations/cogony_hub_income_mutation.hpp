@@ -27,12 +27,10 @@ public:
     int income = n_junctions * _config.creds_per_junction
                + n_observatories * _config.creds_per_observatory
                + n_datacenters * _config.creds_per_datacenter;
-    if (income == 0) return;
     int total_stake = static_cast<int>(hub->inventory.amount(_config.total_stake_id));
 
-    // Set revenue display on hub (overwrite previous period).
-    auto cur_rev = static_cast<InventoryDelta>(hub->inventory.amount(_config.revenue_id));
-    hub->inventory.update(_config.revenue_id, static_cast<InventoryDelta>(income) - cur_rev);
+    update_displays(ctx, hub, total_stake);
+    if (income == 0) return;
 
     // Find champion and collect all stakers.
     struct Staker { GridObject* agent; int stake; };
@@ -75,6 +73,43 @@ public:
   }
 
 private:
+  static void set(GridObject* entity, InventoryItem id, int val) {
+    auto cur = static_cast<InventoryDelta>(entity->inventory.amount(id));
+    entity->inventory.update(id, static_cast<InventoryDelta>(val) - cur);
+  }
+
+  void update_hub_display(GridObject* hub, int total_stake, int buy_price, int sell_price) const {
+    set(hub, _config.total_stake_id, total_stake);
+    set(hub, _config.stake_buy_price_id, buy_price);
+    set(hub, _config.stake_sell_price_id, sell_price);
+  }
+
+  void update_station_display(GridObject* obj, int /*total_stake*/, int buy_price, int sell_price) const {
+    if (obj->type_name == "stake_buy_station") {
+      set(obj, _config.stake_buy_price_id, buy_price);
+    } else if (obj->type_name == "stake_sell_station") {
+      set(obj, _config.stake_sell_price_id, sell_price);
+    }
+  }
+
+  void update_displays(HandlerContext& ctx, GridObject* hub, int total_stake) const {
+    int buy_price = _config.k * (total_stake + 1);
+    int sell_price = _config.k * total_stake;
+
+    update_hub_display(hub, total_stake, buy_price, sell_price);
+
+    if (_config.team_tag_id < 0 || !ctx.tag_index) return;
+    auto& tagged = ctx.tag_index->get_objects_with_tag(_config.team_tag_id);
+    for (auto* obj : tagged) {
+      if (!obj) continue;
+      if (obj->type_name == "hub") {
+        update_hub_display(obj, total_stake, buy_price, sell_price);
+      } else {
+        update_station_display(obj, total_stake, buy_price, sell_price);
+      }
+    }
+  }
+
   CogonyHubIncomeMutationConfig _config;
 };
 

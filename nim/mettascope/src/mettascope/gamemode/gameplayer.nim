@@ -739,10 +739,10 @@ proc centerPanel(winW: float32, winH: float32) =
         continue
       let
         itemName = replay.itemNames[item.itemId]
-        itemIcon = "resources/" & itemName
+        itemIcon = resourceIconPath(itemName)
       if itemName in @["hp", "energy", "solar", "scrambler", "heart", "creds"]:
         continue
-      if itemIcon notin sk.atlas.entries:
+      if itemIcon.len == 0:
         continue
       resourcesToDraw.add((icon: itemIcon, amount: item.count))
     # Use `at` for resource anchor; buildings start higher since they have no bars.

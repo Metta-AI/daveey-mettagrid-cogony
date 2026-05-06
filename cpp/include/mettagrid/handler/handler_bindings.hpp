@@ -418,8 +418,8 @@ inline void bind_handler_config(py::module& m) {
       .def_readwrite("invested_id", &CogonyStakeMutationConfig::invested_id)
       .def_readwrite("dividends_id", &CogonyStakeMutationConfig::dividends_id)
       .def_readwrite("total_stake_id", &CogonyStakeMutationConfig::total_stake_id)
-      .def_readwrite("curve_reserve_id", &CogonyStakeMutationConfig::curve_reserve_id)
-      .def_readwrite("stake_cost_id", &CogonyStakeMutationConfig::stake_cost_id)
+      .def_readwrite("stake_buy_price_id", &CogonyStakeMutationConfig::stake_buy_price_id)
+      .def_readwrite("stake_sell_price_id", &CogonyStakeMutationConfig::stake_sell_price_id)
       .def_readwrite("hub_tag_id", &CogonyStakeMutationConfig::hub_tag_id)
       .def_readwrite("k", &CogonyStakeMutationConfig::k)
       .def_readwrite("mode", &CogonyStakeMutationConfig::mode);
@@ -431,10 +431,12 @@ inline void bind_handler_config(py::module& m) {
       .def_readwrite("total_stake_id", &CogonyHubIncomeMutationConfig::total_stake_id)
       .def_readwrite("stake_id", &CogonyHubIncomeMutationConfig::stake_id)
       .def_readwrite("team_tag_id", &CogonyHubIncomeMutationConfig::team_tag_id)
+      .def_readwrite("stake_buy_price_id", &CogonyHubIncomeMutationConfig::stake_buy_price_id)
+      .def_readwrite("stake_sell_price_id", &CogonyHubIncomeMutationConfig::stake_sell_price_id)
+      .def_readwrite("k", &CogonyHubIncomeMutationConfig::k)
       .def_readwrite("creds_per_junction", &CogonyHubIncomeMutationConfig::creds_per_junction)
       .def_readwrite("creds_per_observatory", &CogonyHubIncomeMutationConfig::creds_per_observatory)
       .def_readwrite("creds_per_datacenter", &CogonyHubIncomeMutationConfig::creds_per_datacenter)
-      .def_readwrite("revenue_id", &CogonyHubIncomeMutationConfig::revenue_id)
       .def_readwrite("champion_pct", &CogonyHubIncomeMutationConfig::champion_pct);
 
   py::class_<CogonyTrapTriggerMutationConfig>(m, "CogonyTrapTriggerMutationConfig")

@@ -386,8 +386,8 @@ def convert_mutations(
             if mutation.dividends:
                 cfg.dividends_id = id_maps.resource_name_to_id[mutation.dividends]
             cfg.total_stake_id = id_maps.resource_name_to_id[mutation.total_stake]
-            cfg.curve_reserve_id = id_maps.resource_name_to_id[mutation.curve_reserve]
-            cfg.stake_cost_id = id_maps.resource_name_to_id[mutation.stake_cost]
+            cfg.stake_buy_price_id = id_maps.resource_name_to_id[mutation.stake_buy_price]
+            cfg.stake_sell_price_id = id_maps.resource_name_to_id[mutation.stake_sell_price]
             if mutation.hub_tag:
                 cfg.hub_tag_id = id_maps.tag_name_to_id[mutation.hub_tag]
             cfg.k = mutation.k
@@ -402,9 +402,13 @@ def convert_mutations(
                 cfg.dividends_id = id_maps.resource_name_to_id[mutation.dividends]
             cfg.total_stake_id = id_maps.resource_name_to_id[mutation.total_stake]
             cfg.stake_id = id_maps.resource_name_to_id[mutation.stake]
-            cfg.revenue_id = id_maps.resource_name_to_id[mutation.revenue]
+            cfg.stake_buy_price_id = id_maps.resource_name_to_id[mutation.stake_buy_price]
+            cfg.stake_sell_price_id = id_maps.resource_name_to_id[mutation.stake_sell_price]
             cfg.team_tag_id = id_maps.tag_name_to_id[mutation.team_tag]
+            cfg.k = mutation.k
             cfg.creds_per_junction = mutation.creds_per_junction
+            cfg.creds_per_observatory = mutation.creds_per_observatory
+            cfg.creds_per_datacenter = mutation.creds_per_datacenter
             cfg.champion_pct = mutation.champion_pct
             target_obj.add_cogony_hub_income_mutation(cfg)
 

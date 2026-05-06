@@ -208,8 +208,8 @@ struct CogonyStakeMutationConfig {
   InventoryItem invested_id = 0;
   InventoryItem dividends_id = 0;
   InventoryItem total_stake_id = 0;
-  InventoryItem curve_reserve_id = 0;
-  InventoryItem stake_cost_id = 0;
+  InventoryItem stake_buy_price_id = 0;
+  InventoryItem stake_sell_price_id = 0;
   int hub_tag_id = -1;
   int k = 10;
   StakeMode mode = StakeMode::CLAIM;
@@ -235,8 +235,10 @@ struct CogonyHubIncomeMutationConfig {
   InventoryItem dividends_id = 0;
   InventoryItem total_stake_id = 0;
   InventoryItem stake_id = 0;
-  InventoryItem revenue_id = 0;
+  InventoryItem stake_buy_price_id = 0;
+  InventoryItem stake_sell_price_id = 0;
   int team_tag_id = -1;
+  int k = 10;
   int creds_per_junction = 10;
   int creds_per_observatory = 50;
   int creds_per_datacenter = 100;
