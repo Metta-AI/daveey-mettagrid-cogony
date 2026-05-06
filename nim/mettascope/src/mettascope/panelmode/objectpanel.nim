@@ -5,6 +5,22 @@ import
   ../gamemode/[team, sound],
   widgets
 
+when defined(emscripten):
+  {.emit: """
+  #include <emscripten.h>
+  """.}
+
+  {.emit: """
+  EM_JS(void, post_selected_agent_internal, (int agentId), {
+    window.parent.postMessage({
+      type: 'mettascopeSelectionChanged',
+      agentId: agentId
+    }, '*');
+  });
+  """.}
+
+  proc post_selected_agent_internal(agentId: cint) {.importc.}
+
 type
   ResourceLimitGroup* = object
     name*: string
@@ -639,11 +655,16 @@ proc drawObjectInfo*(panel: Panel, frameId: string, contentPos: Vec2, contentSiz
       let objConfigForHandlers = getObjConfig(cur)
       drawOnUseHandlers(objConfigForHandlers)
 
+proc postSelectedAgent*(obj: Entity) =
+  when defined(emscripten):
+    let agentId = if obj != nil and obj.isAgent: obj.agentId else: -1
+    post_selected_agent_internal(agentId.cint)
 
 proc selectObject*(obj: Entity) =
   if obj != nil and not obj.alive.at:
     return
   selected = obj
+  postSelectedAgent(obj)
   if obj != nil:
     let teamIdx = getEntityTeamIndex(obj)
     if teamIdx >= 0:

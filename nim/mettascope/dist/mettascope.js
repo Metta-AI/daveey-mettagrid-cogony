@@ -1228,6 +1228,7 @@ function get_local_storage_length(key) { const keyUtf8 = UTF8ToString(key); cons
 function get_local_storage_into(output,maxLen,key) { const keyUtf8 = UTF8ToString(key); const value = localStorage.getItem(keyUtf8); if (value === null) { if (maxLen > 0) output[0] = 0; return 1; } return stringToUTF8(value, output, maxLen); }
 function set_local_storage(key,value) { const keyUtf8 = UTF8ToString(key); const valueUtf8 = UTF8ToString(value); localStorage.setItem(keyUtf8, valueUtf8); }
 function get_platform() { var s = navigator.platform || ""; var len = lengthBytesUTF8(s) + 1; var buf = _malloc(len); stringToUTF8(s, buf, len); return buf; }
+function post_selected_agent_internal(agentId) { window.parent.postMessage({ type: 'mettascopeSelectionChanged', agentId: agentId }, '*'); }
 function mp_connect_ws_internal(url) { var wsUrl = UTF8ToString(url); console.log('Connecting to ' + wsUrl); window._mpWs = new WebSocket(wsUrl); window._mpWs.onopen = function() { console.log('WebSocket connected'); }; window._mpWs.onmessage = function(e) { var data = e.data; var len = lengthBytesUTF8(data) + 1; var ptr = _malloc(len); stringToUTF8(data, ptr, len); Module._mp_on_message(ptr, len - 1); _free(ptr); }; window._mpWs.onerror = function(e) { console.error('WebSocket error', e); }; window._mpWs.onclose = function() { console.log('WebSocket closed'); }; }
 function mp_send_ws_internal(msg) { if (window._mpWs && window._mpWs.readyState === 1) { window._mpWs.send(UTF8ToString(msg)); } }
 
@@ -10301,6 +10302,8 @@ var wasmImports = {
   /** @export */
   open_url: open_url,
   /** @export */
+  post_selected_agent_internal: post_selected_agent_internal,
+  /** @export */
   set_canvas_size: set_canvas_size,
   /** @export */
   set_cursor: set_cursor,
@@ -10345,7 +10348,7 @@ var _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind');
 var _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind');
 var _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind');
 var ___start_em_js = Module['___start_em_js'] = 235104;
-var ___stop_em_js = Module['___stop_em_js'] = 239303;
+var ___stop_em_js = Module['___stop_em_js'] = 239414;
 
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
