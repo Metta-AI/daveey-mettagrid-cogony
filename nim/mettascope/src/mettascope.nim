@@ -298,6 +298,7 @@ proc onFrame() =
     drawPanels()
   else:
     ## Game mode UI.
+    handleVibeHotkeys()
     drawGameWorld()
 
   drawTutorialOverlay()

@@ -3,6 +3,7 @@ import
   opengl,
   bumpy, vmath, windy, silky, silky/atlas, chroma, pixie,
   ../[common, configs, replays, colors, actions, cognames],
+  ../panelmode/vibespanel,
   team, sound, worldmap, minimap, custom_hud, camera, talk
 
 var
@@ -206,13 +207,26 @@ proc drawVibeButton(
   # Hit test and click handling.
   let vibeHover = mousePos.overlaps(btnRect)
   if vibeHover:
+    if window.buttonPressed[MouseRight] or
+        (window.buttonPressed[MouseLeft] and vibeBindingModifierDown()):
+      playSound("UIbutton.wav")
+      worldMapZoomInfo.hasMouse = false
+      beginVibeBindingClick(vibeName, sk.mousePos)
     if not isActive:
       sk.drawImage("ui/button_main.hover", pos - vec2(16, 16))
-    if window.buttonReleased[MouseLeft]:
+    if window.buttonReleased[MouseRight]:
+      playSound("UIbutton.wav")
+      worldMapZoomInfo.hasMouse = false
+      openVibeBindingPopup(vibeName, sk.mousePos)
+    elif window.buttonReleased[MouseLeft]:
       playSound("UIbutton.wav")
 
       worldMapZoomInfo.hasMouse = false
-      if selected != nil and selected.isAgent:
+      if bindingPopupClickVibe == vibeName:
+        discard
+      elif vibeBindingModifierDown():
+        openVibeBindingPopup(vibeName, sk.mousePos)
+      elif selected != nil and selected.isAgent:
         let vibeActionId = replay.actionNames.find("change_vibe_" & vibeName)
         if vibeActionId >= 0:
           let shiftDown = window.buttonDown[KeyLeftShift] or
@@ -242,9 +256,21 @@ proc drawVibeButton(
           else:
             sendAction(selected.agentId, replay.actionNames[vibeActionId])
 
+  finishVibeBindingClick()
+
   if vibeHover:
-    tooltip(vibeName)
+    let bl = bindingLabel(vibeName)
+    let tip = if bl.len > 0:
+        vibeName & " [" & bl & "]"
+      else:
+        vibeName
+    tooltip(tip)
   drawIconScaled(icon, pos, iconSize)
+
+  let bl = bindingLabel(vibeName)
+  if bl.len > 0:
+    discard sk.drawText(sk.textStyle, bl, pos + vec2(10, -12),
+      rgbx(255, 255, 100, 255), clip = false)
 
 proc drawToggleIconButton(pos: Vec2, icon: string, isActive: bool): bool =
   ## Draw an icon-only toggle button and return true on click.
@@ -958,6 +984,7 @@ proc drawGameWorld*() =
   bottomBarStretch(winW, winH)
   bottomLeftPanel(winH)
   bottomRightPanel(winW, winH)
+  drawBindingsPopup()
   centerPanel(winW, winH)
   centeredTalkComposer(winW, winH)
 
