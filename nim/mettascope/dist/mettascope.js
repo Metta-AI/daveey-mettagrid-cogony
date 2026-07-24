@@ -34,7 +34,7 @@ var Module = typeof Module != 'undefined' ? Module : {};
         // web worker
         PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
       }
-      var PACKAGE_NAME = '/Users/daveey/code/cogame-cogony/.mettagrid/nim/mettascope/dist/mettascope.data';
+      var PACKAGE_NAME = '/private/tmp/claude-501/-Users-daveey-code-daveey-cogamer--claude-worktrees-lucid-diffie-d8cb4d/21e8a96d-39a9-4454-8d3f-1a6c0a0186fe/scratchpad/cogony-fork/nim/mettascope/dist/mettascope.data';
       var REMOTE_PACKAGE_BASE = 'mettascope.data';
       if (typeof Module['locateFilePackage'] === 'function' && !Module['locateFile']) {
         Module['locateFile'] = Module['locateFilePackage'];
@@ -200,10 +200,10 @@ Module['FS_createPath']("/packages/mettagrid/nim/mettascope/data", "view", true,
           var files = metadata['files'];
           for (var i = 0; i < files.length; ++i) {
             DataRequest.prototype.requests[files[i].filename].onload();
-          }          Module['removeRunDependency']('datafile_/Users/daveey/code/cogame-cogony/.mettagrid/nim/mettascope/dist/mettascope.data');
+          }          Module['removeRunDependency']('datafile_/private/tmp/claude-501/-Users-daveey-code-daveey-cogamer--claude-worktrees-lucid-diffie-d8cb4d/21e8a96d-39a9-4454-8d3f-1a6c0a0186fe/scratchpad/cogony-fork/nim/mettascope/dist/mettascope.data');
 
       };
-      Module['addRunDependency']('datafile_/Users/daveey/code/cogame-cogony/.mettagrid/nim/mettascope/dist/mettascope.data');
+      Module['addRunDependency']('datafile_/private/tmp/claude-501/-Users-daveey-code-daveey-cogamer--claude-worktrees-lucid-diffie-d8cb4d/21e8a96d-39a9-4454-8d3f-1a6c0a0186fe/scratchpad/cogony-fork/nim/mettascope/dist/mettascope.data');
 
       if (!Module.preloadResults) Module.preloadResults = {};
 
@@ -1214,6 +1214,7 @@ function get_window_width() { return window.innerWidth; }
 function get_window_height() { return window.innerHeight; }
 function get_canvas_width() { return Module.canvas.width; }
 function get_canvas_height() { return Module.canvas.height; }
+function setup_windy_runtime() { if (Module.canvas && !Module.canvas.windyContextHandlerAdded) { Module.canvas.addEventListener("webglcontextlost", function(e) { console.error("WebGL context lost. You will need to reload the page."); e.preventDefault(); }, false); Module.canvas.windyContextHandlerAdded = true; } if (!window.windyErrorHandlerAdded) { window.addEventListener("error", function() { console.info("Exception thrown, see JavaScript console"); }); window.windyErrorHandlerAdded = true; } }
 function set_canvas_size(width,height) { Module.canvas.width = width; Module.canvas.height = height; Module.canvas.style.width = "100%"; Module.canvas.style.height = "100%"; }
 function make_canvas_focusable() { Module.canvas.tabIndex = 1; Module.canvas.focus(); }
 function set_document_title(title) { document.title = UTF8ToString(title); }
@@ -1228,6 +1229,9 @@ function get_local_storage_length(key) { const keyUtf8 = UTF8ToString(key); cons
 function get_local_storage_into(output,maxLen,key) { const keyUtf8 = UTF8ToString(key); const value = localStorage.getItem(keyUtf8); if (value === null) { if (maxLen > 0) output[0] = 0; return 1; } return stringToUTF8(value, output, maxLen); }
 function set_local_storage(key,value) { const keyUtf8 = UTF8ToString(key); const valueUtf8 = UTF8ToString(value); localStorage.setItem(keyUtf8, valueUtf8); }
 function get_platform() { var s = navigator.platform || ""; var len = lengthBytesUTF8(s) + 1; var buf = _malloc(len); stringToUTF8(s, buf, len); return buf; }
+function windy_websocket_open(handle,url) { if (!Module.windyWebSockets) Module.windyWebSockets = {}; const urlUtf8 = UTF8ToString(url); let ws; try { ws = new WebSocket(urlUtf8); } catch (err) { const msg = String(err && err.message ? err.message : err); const len = lengthBytesUTF8(msg) + 1; const ptr = _malloc(len); stringToUTF8(msg, ptr, len); Module._windy_websocket_error_callback(handle, ptr); _free(ptr); return; } ws.binaryType = "arraybuffer"; Module.windyWebSockets[handle] = ws; ws.onopen = function() { Module._windy_websocket_open_callback(handle); }; ws.onmessage = function(event) { if (typeof event.data === "string") { const len = lengthBytesUTF8(event.data); const ptr = _malloc(len + 1); stringToUTF8(event.data, ptr, len + 1); Module._windy_websocket_message_callback(handle, ptr, len, 0); _free(ptr); return; } const sendBytes = function(bytes) { const len = bytes.length; const ptr = _malloc(len); HEAPU8.set(bytes, ptr); Module._windy_websocket_message_callback(handle, ptr, len, 1); _free(ptr); }; if (event.data instanceof ArrayBuffer) { sendBytes(new Uint8Array(event.data)); } else if (event.data instanceof Blob) { event.data.arrayBuffer().then(function(buffer) { sendBytes(new Uint8Array(buffer)); }); } }; ws.onerror = function() { const msg = "WebSocket error"; const len = lengthBytesUTF8(msg) + 1; const ptr = _malloc(len); stringToUTF8(msg, ptr, len); Module._windy_websocket_error_callback(handle, ptr); _free(ptr); }; ws.onclose = function() { delete Module.windyWebSockets[handle]; Module._windy_websocket_close_callback(handle); }; }
+function windy_websocket_send(handle,data,len,kind) { const ws = Module.windyWebSockets && Module.windyWebSockets[handle]; if (!ws || ws.readyState !== WebSocket.OPEN) return; if (kind === 0) { ws.send(UTF8ToString(data, len)); } else { const bytes = HEAPU8.slice(data, data + len); ws.send(bytes); } }
+function windy_websocket_close(handle) { const ws = Module.windyWebSockets && Module.windyWebSockets[handle]; if (!ws) return; delete Module.windyWebSockets[handle]; ws.close(); }
 function post_selected_agent_internal(agentId) { window.parent.postMessage({ type: 'mettascopeSelectionChanged', agentId: agentId }, '*'); }
 function mp_connect_ws_internal(url) { var wsUrl = UTF8ToString(url); console.log('Connecting to ' + wsUrl); window._mpWs = new WebSocket(wsUrl); window._mpWs.onopen = function() { console.log('WebSocket connected'); }; window._mpWs.onmessage = function(e) { var data = e.data; var len = lengthBytesUTF8(data) + 1; var ptr = _malloc(len); stringToUTF8(data, ptr, len); Module._mp_on_message(ptr, len - 1); _free(ptr); }; window._mpWs.onerror = function(e) { console.error('WebSocket error', e); }; window._mpWs.onclose = function() { console.log('WebSocket closed'); }; }
 function mp_send_ws_internal(msg) { if (window._mpWs && window._mpWs.readyState === 1) { window._mpWs.send(UTF8ToString(msg)); } }
@@ -1830,10 +1834,7 @@ function mp_send_ws_internal(msg) { if (window._mpWs && window._mpWs.readyState 
       return Math.ceil(size / alignment) * alignment;
     };
   var mmapAlloc = (size) => {
-      size = alignMemory(size, 65536);
-      var ptr = _emscripten_builtin_memalign(65536, size);
-      if (!ptr) return 0;
-      return zeroMemory(ptr, size);
+      abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
     };
   var MEMFS = {
   ops_table:null,
@@ -4435,57 +4436,6 @@ function mp_send_ws_internal(msg) { if (window._mpWs && window._mpWs.readyState 
 
   var nowIsMonotonic = 1;
   var __emscripten_get_now_is_monotonic = () => nowIsMonotonic;
-
-  
-  
-  
-  
-  
-  var convertI32PairToI53Checked = (lo, hi) => {
-      assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
-      assert(hi === (hi|0));                    // hi should be a i32
-      return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
-    };
-  function __mmap_js(len,prot,flags,fd,offset_low, offset_high,allocated,addr) {
-    var offset = convertI32PairToI53Checked(offset_low, offset_high);;
-  
-    
-  try {
-  
-      if (isNaN(offset)) return 61;
-      var stream = SYSCALLS.getStreamFromFD(fd);
-      var res = FS.mmap(stream, len, offset, prot, flags);
-      var ptr = res.ptr;
-      HEAP32[((allocated)>>2)] = res.allocated;
-      HEAPU32[((addr)>>2)] = ptr;
-      return 0;
-    } catch (e) {
-    if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
-    return -e.errno;
-  }
-  ;
-  }
-
-  
-  function __munmap_js(addr,len,prot,flags,fd,offset_low, offset_high) {
-    var offset = convertI32PairToI53Checked(offset_low, offset_high);;
-  
-    
-  try {
-  
-      if (isNaN(offset)) return 61;
-      var stream = SYSCALLS.getStreamFromFD(fd);
-      if (prot & 2) {
-        SYSCALLS.doMsync(addr, stream, len, flags, offset);
-      }
-      FS.munmap(stream);
-      // implicitly return 0
-    } catch (e) {
-    if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
-    return -e.errno;
-  }
-  ;
-  }
 
   var _emscripten_set_main_loop_timing = (mode, value) => {
       Browser.mainLoop.timingMode = mode;
@@ -8779,6 +8729,11 @@ function mp_send_ws_internal(msg) { if (window._mpWs && window._mpWs.readyState 
   }
 
   
+  var convertI32PairToI53Checked = (lo, hi) => {
+      assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
+      assert(hi === (hi|0));                    // hi should be a i32
+      return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
+    };
   function _fd_seek(fd,offset_low, offset_high,whence,newOffset) {
     var offset = convertI32PairToI53Checked(offset_low, offset_high);;
   
@@ -10072,10 +10027,6 @@ var wasmImports = {
   /** @export */
   _emscripten_get_now_is_monotonic: __emscripten_get_now_is_monotonic,
   /** @export */
-  _mmap_js: __mmap_js,
-  /** @export */
-  _munmap_js: __munmap_js,
-  /** @export */
   alBufferData: _alBufferData,
   /** @export */
   alDeleteBuffers: _alDeleteBuffers,
@@ -10312,7 +10263,11 @@ var wasmImports = {
   /** @export */
   set_local_storage: set_local_storage,
   /** @export */
-  setup_drag_drop_handlers_internal: setup_drag_drop_handlers_internal
+  setup_drag_drop_handlers_internal: setup_drag_drop_handlers_internal,
+  /** @export */
+  setup_windy_runtime: setup_windy_runtime,
+  /** @export */
+  windy_websocket_close: windy_websocket_close
 };
 Asyncify.instrumentWasmImports(wasmImports);
 var wasmExports = createWasm();
@@ -10323,7 +10278,6 @@ var _fflush = createExportWrapper('fflush');
 var _windy_file_drop_callback = Module['_windy_file_drop_callback'] = createExportWrapper('windy_file_drop_callback');
 var _mp_on_message = Module['_mp_on_message'] = createExportWrapper('mp_on_message');
 var _main = Module['_main'] = createExportWrapper('main');
-var _emscripten_builtin_memalign = createExportWrapper('emscripten_builtin_memalign');
 var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
 var _emscripten_stack_get_free = () => (_emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'])();
 var _emscripten_stack_get_base = () => (_emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'])();
@@ -10347,8 +10301,8 @@ var _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind');
 var _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind');
 var _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind');
 var _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind');
-var ___start_em_js = Module['___start_em_js'] = 235104;
-var ___stop_em_js = Module['___stop_em_js'] = 239414;
+var ___start_em_js = Module['___start_em_js'] = 233112;
+var ___stop_em_js = Module['___stop_em_js'] = 239925;
 
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===

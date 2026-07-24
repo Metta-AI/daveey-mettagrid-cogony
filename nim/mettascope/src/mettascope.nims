@@ -22,6 +22,10 @@ if defined(emscripten):
   --exceptions:goto
   --define:noSignalHandler
   --debugger:native
+  # Nim's bundled allocator corrupts the heap on wasm32 with ALLOW_MEMORY_GROWTH
+  # (overlapping allocations); route through emscripten's malloc instead.
+  # Same fix as Metta-AI/coworld-ctf's replay viewer and Metta-AI/bitworld#236.
+  --define:useMalloc
 
   # Delete dist directory if it exists
   if dirExists("dist"):
@@ -58,4 +62,7 @@ when not defined(debug):
 
 --define:ssl
 --define:profile
---define:nimTypeNames
+if not defined(emscripten):
+  # getMemCounters (needed by fluffy when nimTypeNames is set) only exists with
+  # Nim's native allocator, which useMalloc replaces.
+  --define:nimTypeNames
