@@ -3,7 +3,8 @@ import
   opengl,
   bumpy, vmath, windy, silky, silky/atlas, chroma, pixie,
   ../[common, configs, replays, colors, actions, cognames],
-  team, sound, worldmap, minimap, custom_hud, camera, talk
+  team, sound, worldmap, minimap, custom_hud, camera, talk,
+  ../panelmode/vibespanel
 
 var
   pendingCenter: Vec2
@@ -208,7 +209,13 @@ proc drawVibeButton(
   if vibeHover:
     if not isActive:
       sk.drawImage("ui/button_main.hover", pos - vec2(16, 16))
-    if window.buttonReleased[MouseLeft]:
+    if window.buttonPressed[MouseLeft] and vibeBindingModifierDown():
+      beginVibeBindingClick(vibeName, sk.mousePos)
+    if window.buttonReleased[MouseRight]:
+      openVibeBindingPopup(vibeName, sk.mousePos)
+    if window.buttonReleased[MouseLeft] and
+        not vibeBindingModifierDown() and
+        not (bindingPopupClickVibe == vibeName):
       playSound("UIbutton.wav")
 
       worldMapZoomInfo.hasMouse = false
@@ -967,3 +974,4 @@ proc drawGameWorld*() =
   drawTalkBubbles(worldMapZoomInfo)
   bottomLeftMinimap(winH)
   worldMapZoomInfo.hasMouse = true
+  drawBindingsPopup()

@@ -77,7 +77,7 @@ proc replaySwitch(replay: string) =
     if commandLineReplay != "":
       if commandLineReplay.startsWith("http"):
         common.replay = EmptyReplay
-        echo "fetching replay from URL: ", commandLineReplay
+        echo "fetching replay from URL"
         let req = startHttpRequest(commandLineReplay)
         req.onError = proc(msg: string) =
           echo "Failed to load replay from URL (network error): ", msg
@@ -86,7 +86,7 @@ proc replaySwitch(replay: string) =
         req.onResponse = proc(response: HttpResponse) =
           replayDownloadActive = false
           if response.code != 200:
-            echo "Failed to load replay from URL (HTTP ", response.code, "): ", response.body
+            echo "Failed to load replay from URL (HTTP ", response.code, ")"
             case response.code:
             of 403:
               popupWarning = "Access denied (403 Forbidden).\nThe replay requires authentication or you don't have permission to access it."
@@ -95,7 +95,7 @@ proc replaySwitch(replay: string) =
             of 500, 502, 503, 504:
               popupWarning = "Server error (" & $response.code & ").\nThe replay server is experiencing issues. Please try again later."
             else:
-              popupWarning = "Failed to load replay (HTTP " & $response.code & ").\n" & response.body
+              popupWarning = "Failed to load replay (HTTP " & $response.code & ")."
             return
           echo "replay fetched, loading..."
           try:
@@ -298,6 +298,7 @@ proc onFrame() =
     drawPanels()
   else:
     ## Game mode UI.
+    handleVibeHotkeys()
     drawGameWorld()
 
   drawTutorialOverlay()
