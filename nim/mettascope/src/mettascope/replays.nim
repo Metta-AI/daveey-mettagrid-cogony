@@ -1424,28 +1424,10 @@ proc loadReplayString*(jsonData: string, fileName: string): Replay {.measure.} =
   return replay
 
 proc loadReplay*(data: string, fileName: string): Replay {.measure.} =
-  ## Load a replay from a string.
-  if fileName.endsWith(".json"):
+  ## Decode the received bytes; hosted URLs do not specify the compression.
+  if data.strip().startsWith("{"):
     return loadReplayString(data, fileName)
-
-  if not (fileName.endsWith(".json.gz") or fileName.endsWith(".json.z")):
-    # TODO: Show error to user.
-    echo "Unrecognized replay extension: ", fileName
-    return Replay()
-
-  let expectedFormat =
-    if fileName.endsWith(".json.gz"):
-      dfGzip
-    else: # fileName.endsWith(".json.z"):
-      dfZlib
-
-  let jsonData =
-    try:
-      zippy.uncompress(data, dataFormat = expectedFormat)
-    except ZippyError:
-      # TODO: Show error to user.
-      echo "Error uncompressing replay: ", getCurrentExceptionMsg()
-      return Replay()
+  let jsonData = zippy.uncompress(data, dataFormat = dfDetect)
   return loadReplayString(jsonData, fileName)
 
 proc loadReplay*(fileName: string): Replay {.measure.} =

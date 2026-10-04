@@ -19,6 +19,7 @@ var
   bindingsPopupVibe: string
   bindingsPopupPos: Vec2
   bindingsPopupOpen: bool
+  bindingPopupClickVibe*: string
 
 proc bindingsPath(): string =
   dataDir / "vibe_bindings.json"
@@ -49,6 +50,19 @@ proc loadBindings() =
   except:
     discard
 
+proc vibeBindingModifierDown*(): bool =
+  window.buttonDown[KeyLeftControl] or window.buttonDown[KeyRightControl]
+
+proc openVibeBindingPopup*(vibeName: string, pos: Vec2) =
+  bindingsPopupVibe = vibeName
+  bindingsPopupPos = pos
+  bindingsPopupOpen = true
+
+proc beginVibeBindingClick*(vibeName: string, pos: Vec2) =
+  ## Remember the press so releasing Control cannot activate the vibe.
+  bindingPopupClickVibe = vibeName
+  openVibeBindingPopup(vibeName, pos)
+
 proc getVibes(): seq[string] =
   for vibe in replay.config.game.vibeNames:
     result.add("vibe/" & vibe)
@@ -67,6 +81,8 @@ proc handleVibeHotkeys*() =
     return
   if selected.isNil or not selected.isAgent:
     return
+  if vibeBindings.len == 0:
+    loadBindings()
   for key, vibe in vibeBindings:
     if window.buttonPressed[key]:
       let actionName = "change_vibe_" & vibe
@@ -74,8 +90,11 @@ proc handleVibeHotkeys*() =
       if actionId >= 0:
         sendAction(selected.agentId, actionName)
 
-proc drawBindingsPopup() =
+proc drawBindingsPopup*() =
   ## Draw the right-click key assignment dropdown.
+  defer:
+    if window.buttonReleased[MouseLeft]:
+      bindingPopupClickVibe = ""
   if not bindingsPopupOpen:
     return
 
@@ -112,7 +131,8 @@ proc drawBindingsPopup() =
     discard sk.drawText(sk.textStyle, displayLabel,
       vec2(bindingsPopupPos.x + 8, y + 2), col, clip = false)
 
-    if hover and window.buttonReleased[MouseLeft]:
+    if hover and window.buttonReleased[MouseLeft] and
+        not vibeBindingModifierDown() and bindingPopupClickVibe.len == 0:
       if existing.len > 0 and existing != bindingsPopupVibe:
         vibeBindings.del(key)
       for oldKey, oldVibe in vibeBindings:
@@ -154,36 +174,41 @@ proc drawVibes*(panel: Panel, frameId: string,
         sk.at.y += 48 + m
 
       let btnPos = sk.at
+      let bindingHover = sk.mouseHover(window, rect(
+        btnPos - vec2(8, 8), sk.getImageSize(vibe) + vec2(16, 16)))
+      if bindingHover and
+          window.buttonPressed[MouseLeft] and vibeBindingModifierDown():
+        beginVibeBindingClick(vibeName, sk.mousePos)
       iconButton(vibe):
-        if selected == nil or not selected.isAgent:
-          return
-        let shiftDown = window.buttonDown[KeyLeftShift] or
-          window.buttonDown[KeyRightShift]
-        if shiftDown:
-          let objective = Objective(
-            kind: Vibe,
-            vibeActionId: vibeActionId,
-            repeat: false)
-          if not agentObjectives.hasKey(selected.agentId) or
-              agentObjectives[selected.agentId].len == 0:
-            agentObjectives[selected.agentId] = @[objective]
-            agentPaths[selected.agentId] = @[
-              PathAction(kind: Vibe,
-                vibeActionId: vibeActionId)]
-          else:
-            agentObjectives[selected.agentId].add(objective)
-            if agentPaths.hasKey(selected.agentId):
-              agentPaths[selected.agentId].add(
-                PathAction(kind: Vibe,
-                  vibeActionId: vibeActionId))
-            else:
+        if bindingPopupClickVibe == vibeName or vibeBindingModifierDown():
+          discard
+        elif selected != nil and selected.isAgent:
+          let shiftDown = window.buttonDown[KeyLeftShift] or
+            window.buttonDown[KeyRightShift]
+          if shiftDown:
+            let objective = Objective(
+              kind: Vibe,
+              vibeActionId: vibeActionId,
+              repeat: false)
+            if not agentObjectives.hasKey(selected.agentId) or
+                agentObjectives[selected.agentId].len == 0:
+              agentObjectives[selected.agentId] = @[objective]
               agentPaths[selected.agentId] = @[
                 PathAction(kind: Vibe,
                   vibeActionId: vibeActionId)]
-        else:
-          sendAction(selected.agentId,
-            replay.actionNames[vibeActionId])
-
+            else:
+              agentObjectives[selected.agentId].add(objective)
+              if agentPaths.hasKey(selected.agentId):
+                agentPaths[selected.agentId].add(
+                  PathAction(kind: Vibe,
+                    vibeActionId: vibeActionId))
+              else:
+                agentPaths[selected.agentId] = @[
+                  PathAction(kind: Vibe,
+                    vibeActionId: vibeActionId)]
+          else:
+            sendAction(selected.agentId,
+              replay.actionNames[vibeActionId])
       sk.at.x += 16
 
       # Right-click opens binding popup.
@@ -193,9 +218,7 @@ proc drawVibes*(panel: Panel, frameId: string,
         btnRect = rect(btnPos - m2, s2)
       if sk.mouseHover(window, btnRect) and
           window.buttonReleased[MouseRight]:
-        bindingsPopupVibe = vibeName
-        bindingsPopupPos = sk.mousePos
-        bindingsPopupOpen = true
+        openVibeBindingPopup(vibeName, sk.mousePos)
 
       # Show binding label and tooltip.
       let bl = bindingLabel(vibeName)
