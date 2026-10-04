@@ -632,6 +632,7 @@ proc parseHook*(s: string, i: var int, v: var CapacityAmount) =
   v = CapacityAmount(capacityId: arr[0], limit: arr[1])
 
 proc expand[T](data: JsonNode, numSteps: int, defaultValue: T): seq[T] =
+  ## Retain changes through the final timestamp; at() carries its value forward.
   if data == nil:
     # Use the default value.
     return @[defaultValue]
@@ -647,7 +648,8 @@ proc expand[T](data: JsonNode, numSteps: int, defaultValue: T): seq[T] =
       # A sequence of pairs is expanded to a sequence of values.
       var j = 0
       var v: T = defaultValue
-      for i in 0 ..< numSteps:
+      let storedSteps = min(numSteps - 1, data[^1][0].getInt) + 1
+      for i in 0 ..< storedSteps:
         if j < data.len and data[j].kind == JArray and data[j].len >= 2 and
             data[j][0].kind == JInt and data[j][0].getInt == i:
           v = data[j][1].to(T)
@@ -690,11 +692,8 @@ proc expandInventory(data: JsonNode, numSteps: int): seq[seq[seq[int]]] =
         if itemId.kind == JInt and count.kind == JInt:
           staticInventory.add(@[itemId.getInt, count.getInt])
 
-    # Return the same static inventory for all steps.
-    var expandedInventory: seq[seq[seq[int]]]
-    for i in 0..<numSteps:
-      expandedInventory.add(staticInventory)
-    return expandedInventory
+    # The final stored value carries forward to every later step.
+    return @[staticInventory]
 
 proc getExpandedIntSeq*(obj: JsonNode, key: string, maxSteps: int, default: seq[int] = @[0]): seq[int] =
   ## Get an expanded integer sequence field from JsonNode with a default if key is missing.
@@ -922,15 +921,15 @@ proc convertReplayV1ToV2(replayData: JsonNode): JsonNode {.measure.} =
 
 proc computeGainMap(replay: Replay) {.measure.} =
   ## Compute gain/loss for agents.
-  var items = [
-    newSeq[int](replay.itemNames.len),
-    newSeq[int](replay.itemNames.len)
-  ]
   for agent in replay.agents:
+    var items = [
+      newSeq[int](replay.itemNames.len),
+      newSeq[int](replay.itemNames.len)
+    ]
     agent.gainMap = newSeq[seq[ItemAmount]](replay.maxSteps)
 
     # Gain map for step 0.
-    if agent.inventory.len == 1:
+    if agent.inventory.len > 0:
       let inventory = agent.inventory[0]
       var gainMap = newSeq[ItemAmount]()
       if inventory.len > 0:

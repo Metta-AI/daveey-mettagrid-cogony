@@ -12,6 +12,18 @@ import slappy except play
 when defined(emscripten):
   import webby
   import mettascope/multiplayer
+  {.emit: """
+  #include <emscripten.h>
+  EM_JS(void, coworld_replay_status,
+    (const char* kind, const char* message), {
+      window.coworldReplayStatus(
+        UTF8ToString(kind), UTF8ToString(message));
+  });
+  """.}
+  proc postReplayStatus(kind, message: cstring) =
+    ## Report replay loading to the embedding host.
+    {.emit: "coworld_replay_status(`kind`, `message`);".}
+  var replayReadyPosted = false
 else:
   import std/parseopt
 
@@ -29,9 +41,23 @@ when isMainModule:
 when defined(emscripten):
   proc parseUrlParams() =
     ## Parse URL parameters and start multiplayer when ws is present.
-    let url = parseUrl(window.url)
-    let wsParam = url.query["ws"]
-    if wsParam != "":
+    let
+      url = parseUrl(window.url)
+      wsParam = url.query["ws"]
+      fragment = window.url.split('#', maxsplit = 1)
+      replayFragment =
+        if fragment.len == 2:
+          parseSearch(fragment[1])["replay"]
+        else:
+          ""
+    commandLineReplay =
+      if replayFragment != "":
+        replayFragment
+      else:
+        url.query["replay"]
+    if commandLineReplay != "":
+      play = false
+    elif wsParam != "":
       playMode = Realtime
       play = false
       mpConnect(wsParam)
@@ -42,9 +68,9 @@ when defined(emscripten):
           (if url.port != "": ":" & url.port else: "")
       playMode = Realtime
       play = false
-      mpConnect(wsScheme & "://" & host & "/ws")
+      mpConnect(wsScheme & "://" & host & "/global")
     else:
-      commandLineReplay = url.query["replay"]
+      play = false
 
 when not defined(emscripten):
   proc parseArgs() =
@@ -83,6 +109,8 @@ proc replaySwitch(replay: string) =
           echo "Failed to load replay from URL (network error): ", msg
           popupWarning = "Failed to load replay from URL.\nNetwork error: " & msg
           replayDownloadActive = false
+          when defined(emscripten):
+            postReplayStatus("error", "Replay download failed.")
         req.onResponse = proc(response: HttpResponse) =
           replayDownloadActive = false
           if response.code != 200:
@@ -96,16 +124,22 @@ proc replaySwitch(replay: string) =
               popupWarning = "Server error (" & $response.code & ").\nThe replay server is experiencing issues. Please try again later."
             else:
               popupWarning = "Failed to load replay (HTTP " & $response.code & ")."
+            when defined(emscripten):
+              postReplayStatus("error", "Replay download failed.")
             return
           echo "replay fetched, loading..."
           try:
             common.replay = loadReplay(response.body, commandLineReplay)
             onReplayLoaded()
+            when defined(emscripten):
+              play = true
           except:
             let err = getCurrentExceptionMsg()
             echo "Failed to load replay from URL (parse/load error): ", err
             popupWarning = "Failed to load replay from URL.\n" & err
             common.replay = EmptyReplay
+            when defined(emscripten):
+              postReplayStatus("error", "Replay parsing failed.")
         req.onDownloadProgress = proc(completed, total: int) =
           replayDownloadActive = true
           replayDownloadProgress =
@@ -306,6 +340,11 @@ proc onFrame() =
   drawReplayDownloadProgress()
   sk.endUi()
   window.swapBuffers()
+  when defined(emscripten):
+    if playMode == Historical and commandLineReplay != "" and
+        not replayReadyPosted and common.replay.maxSteps > 0:
+      replayReadyPosted = true
+      postReplayStatus("ready", "")
 
   if window.cursor.kind != sk.cursor.kind:
     window.cursor = sk.cursor
