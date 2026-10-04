@@ -28,6 +28,14 @@
   <body>
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     <script type='text/javascript'>
+      window.coworldReplayStatus = function(type, message) {
+        setTimeout(function() {
+          if (window.parent !== window) {
+            window.parent.postMessage({src: 'coworld-replay', type, message}, '*');
+          }
+        }, 0);
+      };
+      window.coworldReplayStatus('loading', '');
 
       function setupCrashHandler(reportFn) {
         window.addEventListener('error', (e) => { /* Resource failures, Sync errors */

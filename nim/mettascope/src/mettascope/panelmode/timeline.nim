@@ -75,13 +75,14 @@ proc playControls*() =
     saveUIState()
     playSound("UIswitch.wav")
 
-  if play:
+  if play and replay.maxSteps > 0:
     case playMode:
     of Historical:
       stepFloat += playSpeed * deltaTime
       if stepFloat >= replay.maxSteps.float32:
         # Loop back to the start.
-        stepFloat -= replay.maxSteps.float32
+        stepFloat -= floor(stepFloat / replay.maxSteps.float32) *
+          replay.maxSteps.float32
     of Realtime:
       # In realtime mode, Python owns the next step. The local timeline only
       # catches up when the user has scrubbed behind the latest available step.
