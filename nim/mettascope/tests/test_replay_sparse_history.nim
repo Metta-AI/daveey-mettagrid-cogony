@@ -8,11 +8,19 @@ const ReplayData = """{"version":4,"num_agents":1,"max_steps":10000,"map_size":[
 let data = parseJson(ReplayData)
 data["objects"][0]["inventory"] = %* [[0, 6]]
 data["objects"][0]["inventory_capacities"] = %* [[0, 12]]
+data["num_agents"] = %2
+data["objects"].add(%* {
+  "id": 3, "agent_id": 1, "alive": true, "type_name": "agent",
+  "location": [3, 3], "orientation": 0, "color": 0,
+  "inventory": [[0, []], [1, [[0, 3]]], [2, [[0, 1]]]],
+  "inventory_max": 10
+})
 let replay = loadReplayString($data, "sparse-history.json")
 doAssert replay.maxSteps == 10000
 let
   stationary = replay.objects[0]
   changing = replay.objects[1]
+  following = replay.objects[2]
 doAssert stationary.location.len == 1
 doAssert stationary.alive.len == 1
 doAssert stationary.policyInfos.len == 1
@@ -35,4 +43,12 @@ for step in 0 ..< replay.maxSteps:
 doAssert changing.gainMap.at(0)[0].count == 5
 doAssert changing.gainMap.at(4)[0].count == 3
 doAssert changing.gainMap.at(9999).len == 0
+doAssert following.inventory.at(0).len == 0
+doAssert following.gainMap.at(0).len == 0
+doAssert following.gainMap.at(1)[0].count == 3
+doAssert following.gainMap.at(2)[0].count == -2
+doAssert following.gainMap.at(9999).len == 0
+for step in 1 ..< replay.maxSteps:
+  doAssert following.inventory.at(step)[0].count ==
+    (if step == 1: 3 else: 1)
 echo "sparse histories preserve all 10000 frames without repeated tails"

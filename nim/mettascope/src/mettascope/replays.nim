@@ -921,11 +921,11 @@ proc convertReplayV1ToV2(replayData: JsonNode): JsonNode {.measure.} =
 
 proc computeGainMap(replay: Replay) {.measure.} =
   ## Compute gain/loss for agents.
-  var items = [
-    newSeq[int](replay.itemNames.len),
-    newSeq[int](replay.itemNames.len)
-  ]
   for agent in replay.agents:
+    var items = [
+      newSeq[int](replay.itemNames.len),
+      newSeq[int](replay.itemNames.len)
+    ]
     agent.gainMap = newSeq[seq[ItemAmount]](replay.maxSteps)
 
     # Gain map for step 0.
