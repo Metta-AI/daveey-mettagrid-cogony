@@ -26,6 +26,18 @@ python.toolchain(
 # pybind11 for Python bindings
 bazel_dep(name = "pybind11_bazel", version = "3.0.0")
 
+# pybind11 3.0.3 frees function-record objects retained by repeated grid snapshots.
+pybind11_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+pybind11_archive(
+    name = "pybind11_headers",
+    build_file = "@pybind11_bazel//:pybind11-BUILD.bazel",
+    sha256 = "787459e1e186ee82001759508fefa408373eae8a076ffe0078b126c6f8f0ec5e",
+    strip_prefix = "pybind11-3.0.3",
+    urls = ["https://github.com/pybind/pybind11/archive/refs/tags/v3.0.3.tar.gz"],
+)
+pybind11_configure = use_extension("@pybind11_bazel//:internal_configure.bzl", "internal_configure_extension")
+override_repo(pybind11_configure, pybind11 = "pybind11_headers")
+
 # Google Test for testing (bcr.2 includes load() statements for Bazel 9 compatibility)
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
 
